@@ -1,0 +1,73 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.env.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_ed25519
+credentials.json
+service-account*.json
+firebase-admin*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+backend/venv/
+venv/
+.venv/
+*.egg-info/
+.eggs/
+
+# Databases
+*.sqlite
+*.db
+*.sqlitedb
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.next/
+coverage/
+.vercel/
+.turbo/
+tmp/
+logs/
+frontend/.vite/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE / agent tooling
+.idea/
+.vscode/
+.cursor/
+.codex/
+.claude/
+.continue/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
