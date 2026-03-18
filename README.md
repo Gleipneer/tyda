@@ -20,6 +20,8 @@ Webbapplikation ovanpå databasen `reflektionsarkiv`. Användare kan skriva post
 
 På Mac/Linux: `./scripts/start.sh` (kräver `chmod +x scripts/start.sh` första gången).
 
+Ny i projektet? Las `KOMPANJON.md` i projektroten for en steg-for-steg-guide.
+
 Skriptet frigör port 8000 och 5173 om de är upptagna, startar backend i bakgrunden och frontend i förgrunden. Backend: http://127.0.0.1:8000, Frontend: http://localhost:5173.
 
 ---

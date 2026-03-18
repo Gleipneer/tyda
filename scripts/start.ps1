@@ -1,17 +1,105 @@
-# Reflektionsarkiv – startskript (Windows PowerShell)
-# Portar: backend 8000, frontend 5173
+# Tyda – robust startskript (Windows PowerShell)
 # Kör från projektroten: .\scripts\start.ps1
 
 $ErrorActionPreference = "Stop"
 $BackendPort = 8000
 $FrontendPort = 5173
 $Root = $PSScriptRoot | Split-Path -Parent
+$BackendDir = Join-Path $Root "backend"
+$FrontendDir = Join-Path $Root "frontend"
+$BackendEnvPath = Join-Path $BackendDir ".env"
+$BackendEnvExamplePath = Join-Path $BackendDir ".env.example"
+$RequirementsPath = Join-Path $BackendDir "requirements.txt"
+$ReflektionsarkivSqlPath = Join-Path $Root "reflektionsarkiv.sql"
+$VenvDir = Join-Path $BackendDir "venv"
+$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
+$BackendDepsMarker = Join-Path $VenvDir ".requirements.sha256"
+$FrontendDepsMarker = Join-Path $FrontendDir "node_modules\.package-lock.sha256"
+$CompanionPath = Join-Path $Root "KOMPANJON.md"
 
 Write-Host ""
 Write-Host "=== Tyda - Start ===" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. Hitta och frigör portar + gamla processkedjor
+function Stop-WithMessage($message) {
+    Write-Host ""
+    Write-Host "FEL: $message" -ForegroundColor Red
+    if (Test-Path $CompanionPath) {
+        Write-Host "Las vidare i KOMPANJON.md i projektroten." -ForegroundColor Yellow
+    }
+    exit 1
+}
+
+function Get-CommandPath($names) {
+    foreach ($name in $names) {
+        $cmd = Get-Command $name -ErrorAction SilentlyContinue
+        if ($cmd) {
+            return $cmd.Source
+        }
+    }
+    return $null
+}
+
+function Get-PythonBootstrap() {
+    $py = Get-Command py -ErrorAction SilentlyContinue
+    if ($py) {
+        return @{ Command = $py.Source; Args = @("-3") }
+    }
+
+    $python = Get-CommandPath @("python", "python3")
+    if ($python) {
+        return @{ Command = $python; Args = @() }
+    }
+
+        Stop-WithMessage "Hittar inte Python. Installera Python 3.11+ och kor sedan skriptet igen."
+}
+
+function Copy-IfMissing($source, $target, $label) {
+    if (-not (Test-Path $target)) {
+        Copy-Item $source $target
+        Write-Host "[$label] Skapade $(Split-Path $target -Leaf) fran mallfil." -ForegroundColor Yellow
+    }
+}
+
+function Read-DotEnv($path) {
+    $values = @{}
+    if (-not (Test-Path $path)) {
+        return $values
+    }
+
+    foreach ($line in Get-Content $path) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith("#")) {
+            continue
+        }
+        $parts = $trimmed -split "=", 2
+        if ($parts.Count -eq 2) {
+            $values[$parts[0].Trim()] = $parts[1].Trim()
+        }
+    }
+
+    return $values
+}
+
+function Get-EnvValue($map, $key, $defaultValue) {
+    if ($map.ContainsKey($key) -and $map[$key] -ne "") {
+        return $map[$key]
+    }
+    return $defaultValue
+}
+
+function Invoke-Checked($filePath, $arguments, $workingDirectory, $label) {
+    Push-Location $workingDirectory
+    try {
+        & $filePath @arguments
+        if ($LASTEXITCODE -ne 0) {
+            Stop-WithMessage "$label misslyckades."
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
 function Get-PidsOnPort($port) {
     $lines = netstat -ano 2>$null | Select-String "LISTENING" | Select-String ":$port\s"
     $pids = @()
@@ -81,12 +169,14 @@ function Stop-FrontendProcesses($port, $frontendDir) {
     }
 }
 
-function Wait-ForBackend($port) {
-    $url = "http://127.0.0.1:$port/api/health"
-    for ($i = 0; $i -lt 20; $i++) {
+function Wait-ForHttpJson($url, $propertyName, $expectedValue) {
+    for ($i = 0; $i -lt 30; $i++) {
         try {
             $res = Invoke-RestMethod -Uri $url -Method GET -TimeoutSec 2
-            if ($res.status -eq "ok") {
+            if ($null -eq $propertyName) {
+                return $true
+            }
+            if ($res.$propertyName -eq $expectedValue) {
                 return $true
             }
         } catch {
@@ -96,41 +186,110 @@ function Wait-ForBackend($port) {
     return $false
 }
 
-$BackendDir = Join-Path $Root "backend"
-$FrontendDir = Join-Path $Root "frontend"
+function Initialize-BackendVenv() {
+    $bootstrap = Get-PythonBootstrap
+    if (-not (Test-Path $VenvPython)) {
+        Write-Host "[Backend] Skapar virtuell miljo..." -ForegroundColor Yellow
+        Invoke-Checked $bootstrap.Command ($bootstrap.Args + @("-m", "venv", $VenvDir)) $BackendDir "Skapande av virtuell miljo"
+    }
+
+    $requirementsHash = (Get-FileHash $RequirementsPath -Algorithm SHA256).Hash
+    $installedHash = if (Test-Path $BackendDepsMarker) { (Get-Content $BackendDepsMarker -Raw).Trim() } else { "" }
+    if ($requirementsHash -ne $installedHash) {
+        Write-Host "[Backend] Installerar Python-paket..." -ForegroundColor Yellow
+        Invoke-Checked $VenvPython @("-m", "pip", "install", "-r", $RequirementsPath) $BackendDir "Installation av backendpaket"
+        Set-Content -Path $BackendDepsMarker -Value $requirementsHash -NoNewline
+    }
+}
+
+function Install-FrontendDependencies() {
+    $npm = Get-CommandPath @("npm.cmd", "npm")
+    if (-not $npm) {
+        Stop-WithMessage "Hittar inte npm. Installera Node.js 20+ och kor sedan skriptet igen."
+    }
+
+    $packageLockPath = Join-Path $FrontendDir "package-lock.json"
+    $packageLockHash = (Get-FileHash $packageLockPath -Algorithm SHA256).Hash
+    $installedHash = if (Test-Path $FrontendDepsMarker) { (Get-Content $FrontendDepsMarker -Raw).Trim() } else { "" }
+    if (-not (Test-Path (Join-Path $FrontendDir "node_modules")) -or $packageLockHash -ne $installedHash) {
+        Write-Host "[Frontend] Installerar npm-paket..." -ForegroundColor Yellow
+        Invoke-Checked $npm @("install") $FrontendDir "Installation av frontendpaket"
+        if (-not (Test-Path (Join-Path $FrontendDir "node_modules"))) {
+            Stop-WithMessage "Frontendpaket installerades inte korrekt."
+        }
+        Set-Content -Path $FrontendDepsMarker -Value $packageLockHash -NoNewline
+    }
+}
+
+function Initialize-DatabaseReady() {
+    $mysql = Get-CommandPath @("mysql.exe", "mysql")
+    if (-not $mysql) {
+        Write-Host "[Databas] mysql-klienten hittades inte. Hoppar over automatisk import." -ForegroundColor Yellow
+        return
+    }
+
+    $envValues = Read-DotEnv $BackendEnvPath
+    $dbHost = Get-EnvValue $envValues "DB_HOST" "localhost"
+    $dbPort = Get-EnvValue $envValues "DB_PORT" "3306"
+    $dbName = Get-EnvValue $envValues "DB_NAME" "reflektionsarkiv"
+    $dbUser = Get-EnvValue $envValues "DB_USER" "root"
+    $dbPassword = Get-EnvValue $envValues "DB_PASSWORD" ""
+
+    $queryArgs = @("--protocol=TCP", "--host=$dbHost", "--port=$dbPort", "--user=$dbUser", "--batch", "--skip-column-names", "-e", "SHOW DATABASES LIKE '$dbName';")
+    $previousPwd = $env:MYSQL_PWD
+    try {
+        if ($dbPassword -ne "") {
+            $env:MYSQL_PWD = $dbPassword
+        } else {
+            Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+        }
+
+        $dbExists = & $mysql @queryArgs 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[Databas] Kunde inte verifiera databasen via mysql-klienten. Fortsatter och later backend ge tydligt fel om DB saknas." -ForegroundColor Yellow
+            return
+        }
+
+        if (($dbExists | Out-String).Trim() -ne $dbName) {
+            Write-Host "[Databas] Skapar databasen fran reflektionsarkiv.sql..." -ForegroundColor Yellow
+            Get-Content -Raw $ReflektionsarkivSqlPath | & $mysql "--protocol=TCP" "--host=$dbHost" "--port=$dbPort" "--user=$dbUser"
+            if ($LASTEXITCODE -ne 0) {
+                Stop-WithMessage "Automatisk import av reflektionsarkiv.sql misslyckades. Kontrollera DB_HOST, DB_USER och DB_PASSWORD i backend\.env."
+            }
+        }
+
+        Write-Host "[Databas] Kor migrationer..." -ForegroundColor Yellow
+        Invoke-Checked $VenvPython @("scripts/run_migration_utf8.py") $BackendDir "Migrering av databasen"
+    } finally {
+        if ($null -ne $previousPwd) {
+            $env:MYSQL_PWD = $previousPwd
+        } else {
+            Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Copy-IfMissing $BackendEnvExamplePath $BackendEnvPath "Backend"
+Initialize-BackendVenv
+Install-FrontendDependencies
+Initialize-DatabaseReady
 
 Stop-BackendProcesses $BackendPort $BackendDir
 Stop-FrontendProcesses $FrontendPort $FrontendDir
 
 Write-Host ""
-
-# 2. Starta backend
-$VenvPython = Join-Path $BackendDir "venv\Scripts\python.exe"
-
-if (-not (Test-Path $VenvPython)) {
-    Write-Host "FEL: Hittar inte venv. Kor forst: cd backend; python -m venv venv; pip install -r requirements.txt" -ForegroundColor Red
-    exit 1
-}
-
 Write-Host ("[Backend] Startar uvicorn pa port {0}..." -f $BackendPort) -ForegroundColor Cyan
-# Kor utan --reload for att undvika hangande barnprocesser pa Windows.
 $backendProc = Start-Process -FilePath $VenvPython -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", $BackendPort -WorkingDirectory $BackendDir -WindowStyle Hidden -PassThru
 Write-Host ('[Backend] PID ' + $backendProc.Id) -ForegroundColor Green
 
-if (-not (Wait-ForBackend $BackendPort)) {
-    Write-Host ("FEL: Backend svarar inte pa http://127.0.0.1:{0}/api/health" -f $BackendPort) -ForegroundColor Red
+if (-not (Wait-ForHttpJson "http://127.0.0.1:$BackendPort/api/health" "status" "ok")) {
     Stop-ProcessTree $backendProc.Id
-    exit 1
+    Stop-WithMessage "Backend svarar inte pa /api/health."
 }
 
-Start-Sleep -Milliseconds 500
-
-# 3. Starta frontend
-if (-not (Test-Path (Join-Path $FrontendDir "node_modules"))) {
-    Write-Host "[Frontend] Forsta gangen - kor npm install..." -ForegroundColor Yellow
-    Push-Location $FrontendDir
-    npm install
-    Pop-Location
+if (-not (Wait-ForHttpJson "http://127.0.0.1:$BackendPort/api/db-health" "status" "ok")) {
+    Stop-ProcessTree $backendProc.Id
+    Stop-WithMessage "Backend nar databasen inte. Kontrollera backend\.env och att MySQL kor."
 }
 
 Write-Host ""
@@ -142,9 +301,10 @@ Write-Host ""
 Write-Host "  Tryck Ctrl+C for att stoppa frontend. Backend fortsatter kora." -ForegroundColor Gray
 Write-Host ""
 
+$npmCommand = Get-CommandPath @("npm.cmd", "npm")
 Push-Location $FrontendDir
 try {
-    npm run dev
+    & $npmCommand run dev
 } finally {
     Pop-Location
 }
