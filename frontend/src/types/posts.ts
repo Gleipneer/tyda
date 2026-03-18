@@ -1,0 +1,29 @@
+export type Synlighet = "privat" | "delad" | "publik";
+
+export interface UserRef {
+  anvandar_id: number;
+  anvandarnamn: string;
+}
+
+export interface CategoryRef {
+  kategori_id: number;
+  namn: string;
+}
+
+export interface Post {
+  post_id: number;
+  titel: string;
+  innehall: string;
+  synlighet: Synlighet;
+  skapad_datum: string;
+  anvandar: UserRef;
+  kategori: CategoryRef;
+}
+
+export interface PostCreate {
+  anvandar_id: number;
+  kategori_id: number;
+  titel: string;
+  innehall: string;
+  synlighet: Synlighet;
+}

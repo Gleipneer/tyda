@@ -37,6 +37,7 @@ venv/
 
 # Node / frontend
 node_modules/
+.vite/
 dist/
 build/
 .next/
