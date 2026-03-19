@@ -10,7 +10,7 @@ import { useActiveUser } from "@/contexts/ActiveUserContext";
 
 export default function PostsPage() {
   const { activeUser } = useActiveUser();
-  const [filter, setFilter] = useState<"alla" | "privat" | "publik" | "delad">("alla");
+  const [filter, setFilter] = useState<"alla" | "privat" | "publik">("alla");
   const { data: posts, isLoading, error } = useQuery({
     queryKey: ["my-posts-list", activeUser?.anvandar_id],
     queryFn: () => fetchPosts({ anvandarId: activeUser!.anvandar_id }),
@@ -22,15 +22,13 @@ export default function PostsPage() {
     return {
       alla: all,
       privata: all.filter((post) => post.synlighet === "privat"),
-      offentliga: all.filter((post) => post.synlighet === "publik"),
-      delade: all.filter((post) => post.synlighet === "delad"),
+      publika: all.filter((post) => post.synlighet === "publik"),
     };
   }, [posts]);
 
   const visiblePosts = useMemo(() => {
     if (filter === "privat") return grouped.privata;
-    if (filter === "publik") return grouped.offentliga;
-    if (filter === "delad") return grouped.delade;
+    if (filter === "publik") return grouped.publika;
     return grouped.alla;
   }, [filter, grouped]);
 
@@ -76,13 +74,8 @@ export default function PostsPage() {
           Privata ({grouped.privata.length})
         </FilterButton>
         <FilterButton active={filter === "publik"} onClick={() => setFilter("publik")}>
-          Offentliga ({grouped.offentliga.length})
+          Publik ({grouped.publika.length})
         </FilterButton>
-        {grouped.delade.length > 0 && (
-          <FilterButton active={filter === "delad"} onClick={() => setFilter("delad")}>
-            Delade ({grouped.delade.length})
-          </FilterButton>
-        )}
       </div>
 
       <div className="space-y-3">

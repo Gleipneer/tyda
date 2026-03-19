@@ -515,8 +515,6 @@ SELECT
     Begrepp.BegreppID,
     Begrepp.Ord,
     Begrepp.Beskrivning,
-    PostBegrepp.RelationTyp,
-    PostBegrepp.Kommentar
 FROM PostBegrepp
 INNER JOIN Begrepp ON PostBegrepp.BegreppID = Begrepp.BegreppID
 WHERE PostBegrepp.PostID = %s
@@ -531,8 +529,6 @@ Request body:
 
 {
   "begrepp_id": 1,
-  "relation_typ": "huvudsymbol",
-  "kommentar": "Detta ord var centralt i posten."
 }
 DELETE /api/post-concepts/{post_begrepp_id}
 
@@ -2222,8 +2218,6 @@ Response 200
 [
   {
     "post_begrepp_id": 1,
-    "relation_typ": "huvudsymbol",
-    "kommentar": "Ormen var central i drömmen",
     "begrepp": {
       "begrepp_id": 1,
       "ord": "orm",
@@ -2235,8 +2229,6 @@ POST /api/posts/{post_id}/concepts
 Request body
 {
   "begrepp_id": 1,
-  "relation_typ": "huvudsymbol",
-  "kommentar": "Detta ord var centralt i posten."
 }
 Response 201
 {
@@ -3292,8 +3284,6 @@ type Concept = {
 PostConcept
 type PostConcept = {
   post_begrepp_id: number;
-  relation_typ: string;
-  kommentar: string | null;
   begrepp: Concept;
 };
 9. VIKTIGA UX-REGLER
@@ -4146,8 +4136,6 @@ Hämta alla begrepp kopplade till en post.
 SQL
 SELECT
     pb.PostBegreppID,
-    pb.RelationTyp,
-    pb.Kommentar,
     b.BegreppID,
     b.Ord,
     b.Beskrivning
@@ -4158,8 +4146,6 @@ ORDER BY b.Ord ASC;
 Return shape
 {
   "post_begrepp_id": 1,
-  "relation_typ": "huvudsymbol",
-  "kommentar": "Ormen var central i drömmen",
   "begrepp": {
     "begrepp_id": 1,
     "ord": "orm",
@@ -4170,22 +4156,18 @@ ENDPOINT: POST /api/posts/{post_id}/concepts
 Request body
 {
   "begrepp_id": 1,
-  "relation_typ": "huvudsymbol",
-  "kommentar": "Detta ord var centralt i posten."
 }
 SQL
 INSERT INTO PostBegrepp (
     PostID,
-    BegreppID,
-    RelationTyp,
-    Kommentar
+    BegreppID
 )
-VALUES (%s, %s, %s, %s);
+VALUES (%s, %s);
 Viktigt
 
 UNIQUE finns på:
 
-(PostID, BegreppID, RelationTyp)
+(PostID, BegreppID)
 
 Så samma relation får inte dubbelinserteras.
 
@@ -4481,9 +4463,6 @@ PostConceptCreate
 
 begrepp_id: int
 
-relation_typ: str
-
-kommentar: str | None
 
 schemas/activity.py
 

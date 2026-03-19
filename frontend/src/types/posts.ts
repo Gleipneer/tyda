@@ -1,4 +1,4 @@
-export type Synlighet = "privat" | "delad" | "publik";
+export type Synlighet = "privat" | "publik";
 
 export interface UserRef {
   anvandar_id: number;

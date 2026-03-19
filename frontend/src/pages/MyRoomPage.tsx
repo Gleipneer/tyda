@@ -11,7 +11,7 @@ import { fetchPosts } from "@/services/posts";
 
 export default function MyRoomPage() {
   const { activeUser } = useActiveUser();
-  const [filter, setFilter] = useState<"alla" | "privat" | "publik" | "delad">("alla");
+  const [filter, setFilter] = useState<"alla" | "privat" | "publik">("alla");
   const { data: posts = [], isLoading, error } = useQuery({
     queryKey: ["my-posts", activeUser?.anvandar_id],
     queryFn: () => fetchPosts({ anvandarId: activeUser!.anvandar_id }),
@@ -20,14 +20,12 @@ export default function MyRoomPage() {
 
   const privatePosts = useMemo(() => posts.filter((post) => post.synlighet === "privat"), [posts]);
   const publicPosts = useMemo(() => posts.filter((post) => post.synlighet === "publik"), [posts]);
-  const sharedPosts = useMemo(() => posts.filter((post) => post.synlighet === "delad"), [posts]);
   const latestPosts = posts.slice(0, 3);
   const visiblePosts = useMemo(() => {
     if (filter === "privat") return privatePosts;
     if (filter === "publik") return publicPosts;
-    if (filter === "delad") return sharedPosts;
     return posts;
-  }, [filter, privatePosts, publicPosts, sharedPosts, posts]);
+  }, [filter, privatePosts, publicPosts, posts]);
 
   return (
     <AppLayout>
@@ -53,8 +51,7 @@ export default function MyRoomPage() {
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <StatPill label="Privata" value={privatePosts.length} />
-              <StatPill label="Offentliga" value={publicPosts.length} />
-              {sharedPosts.length > 0 && <StatPill label="Delade" value={sharedPosts.length} />}
+              <StatPill label="Publik" value={publicPosts.length} />
             </div>
           </ContentCard>
 
@@ -129,14 +126,9 @@ export default function MyRoomPage() {
                 </FilterButton>
                 <FilterButton active={filter === "publik"} onClick={() => setFilter("publik")}>
                   <span className="inline-flex items-center gap-2">
-                    Offentliga <VisibilityBadge value="publik" className="py-0.5" />
+                    Publik <VisibilityBadge value="publik" className="py-0.5" />
                   </span>
                 </FilterButton>
-                {sharedPosts.length > 0 && (
-                  <FilterButton active={filter === "delad"} onClick={() => setFilter("delad")}>
-                    Delade
-                  </FilterButton>
-                )}
               </div>
               <div className="space-y-3">
                 {visiblePosts.length > 0 ? (

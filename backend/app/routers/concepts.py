@@ -93,13 +93,11 @@ def link_concept(post_id: int, data: PostConceptCreate):
     if not concept_repo.get_concept_by_id(data.begrepp_id):
         raise HTTPException(status_code=404, detail="Concept not found")
     try:
-        pid = concept_repo.link_concept_to_post(
-            post_id, data.begrepp_id, data.relation_typ, data.kommentar
-        )
+        pid = concept_repo.link_concept_to_post(post_id, data.begrepp_id)
         return {"post_begrepp_id": pid, "message": "Concept linked to post"}
     except Exception as e:
         if "Duplicate" in str(e) or "UNIQUE" in str(e):
-            raise HTTPException(status_code=400, detail="Concept already linked with same relation type")
+            raise HTTPException(status_code=400, detail="Concept already linked to post")
         raise
 
 

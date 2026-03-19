@@ -3,7 +3,7 @@ import type { Post, PostCreate } from "@/types/posts";
 
 interface FetchPostsOptions {
   anvandarId?: number;
-  synlighet?: "privat" | "delad" | "publik";
+  synlighet?: "privat" | "publik";
 }
 
 export function fetchPosts(options?: FetchPostsOptions): Promise<Post[]> {

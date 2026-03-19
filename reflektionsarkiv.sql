@@ -8,7 +8,9 @@ DROP DATABASE IF EXISTS reflektionsarkiv;
 
 -- Skapa databasen
 CREATE DATABASE reflektionsarkiv
+-- Utökad version av UTF-8 som stöder alla bl.a å,ä,ö
 CHARACTER SET utf8mb4
+-- Bestämmer hur texten ska sorteras och jämföras. Case insensitive, tex A och a behandlas som samma tecken
 COLLATE utf8mb4_unicode_ci;
 
 -- Välj att arbeta i databasen reflektionsarkiv
@@ -25,6 +27,7 @@ CREATE TABLE Anvandare (
 
 -- Tabell: Kategorier
 -- Här sparas vilka typer av poster som finns, till exempel dröm, vision och tanke
+-- TEXT gör så att kolumnen kan innehålla mycket lång text
 CREATE TABLE Kategorier (
     KategoriID INT AUTO_INCREMENT PRIMARY KEY,
     Namn VARCHAR(50) NOT NULL UNIQUE,
@@ -33,19 +36,24 @@ CREATE TABLE Kategorier (
 
 -- Tabell: Poster
 -- Här sparas själva användarens inlägg, alltså drömmar, visioner, tankar och reflektioner
+-- ENUM gör så att kolumnen kan bara innehålla en av de två värdena: privat eller publik
 CREATE TABLE Poster (
     PostID INT AUTO_INCREMENT PRIMARY KEY,
     AnvandarID INT NOT NULL,
     KategoriID INT NOT NULL,
     Titel VARCHAR(150) NOT NULL,
     Innehall TEXT NOT NULL,
-    Synlighet ENUM('privat', 'delad', 'publik') NOT NULL DEFAULT 'privat',
+    Synlighet ENUM('privat', 'publik') NOT NULL DEFAULT 'privat',
     SkapadDatum TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (AnvandarID) REFERENCES Anvandare(AnvandarID),
     FOREIGN KEY (KategoriID) REFERENCES Kategorier(KategoriID)
 );
 
 -- Skapar index på främmande nycklar i Poster
+-- Poster är databasens kärntabell och används ofta vid sökning, koppling och sortering.
+-- Därför indexeras AnvandarID och KategoriID för snabbare relationer och filtrering.
+-- SkapadDatum indexeras för att effektivisera sortering och tidsbaserade frågor.
+-- Detta förbättrar prestandan utan att lägga till onödigt många index.
 CREATE INDEX idx_poster_anvandare ON Poster(AnvandarID);
 CREATE INDEX idx_poster_kategori ON Poster(KategoriID);
 CREATE INDEX idx_poster_skapaddatum ON Poster(SkapadDatum);
@@ -62,19 +70,17 @@ CREATE TABLE Begrepp (
 -- Tabell: PostBegrepp
 -- Detta är kopplingstabellen mellan Poster och Begrepp
 -- En post kan ha många begrepp och ett begrepp kan finnas i många poster
+-- DELETE CASCADE gör så att om en post eller ett begrepp tas bort, tas även kopplingar bort
 CREATE TABLE PostBegrepp (
     PostBegreppID INT AUTO_INCREMENT PRIMARY KEY,
     PostID INT NOT NULL,
     BegreppID INT NOT NULL,
-    RelationTyp ENUM('huvudsymbol', 'bisyftning', 'aterkommande tema', 'farg') NOT NULL DEFAULT 'huvudsymbol',
-    Kommentar TEXT,
     FOREIGN KEY (PostID) REFERENCES Poster(PostID) ON DELETE CASCADE,
     FOREIGN KEY (BegreppID) REFERENCES Begrepp(BegreppID) ON DELETE CASCADE,
-    UNIQUE (PostID, BegreppID, RelationTyp)
+    UNIQUE (PostID, BegreppID)
 );
 
--- Skapar index på kopplingstabellen
-CREATE INDEX idx_postbegrepp_post ON PostBegrepp(PostID);
+-- Index på BegreppID för JOIN/analytics (PostID täcks av UNIQUE)
 CREATE INDEX idx_postbegrepp_begrepp ON PostBegrepp(BegreppID);
 
 -- Tabell: AktivitetLogg
@@ -173,9 +179,9 @@ SELECT * FROM Begrepp;
 -- När dessa rader läggs in kommer triggern automatiskt skapa loggrader i AktivitetLogg
 INSERT INTO Poster (AnvandarID, KategoriID, Titel, Innehall, Synlighet) VALUES
     (1, 1, 'Dröm om orm i tempel', 'Jag drömde om en svart orm i ett tempel.', 'privat'),
-    (1, 4, 'Reflektion om rädsla', 'Jag tror att drömmen handlade om förändring och osäkerhet.', 'delad'),
+    (1, 4, 'Reflektion om rädsla', 'Jag tror att drömmen handlade om förändring och osäkerhet.', 'publik'),
     (2, 3, 'Tanke om vatten', 'Jag tänker ofta på vatten som lugn men också djup.', 'publik'),
-    (2, 1, 'Dröm om eld', 'Jag drömde att allt runt mig brann men jag var lugn.', 'delad'),
+    (2, 1, 'Dröm om eld', 'Jag drömde att allt runt mig brann men jag var lugn.', 'publik'),
     (3, 2, 'Vision av resa', 'Jag såg en lång väg genom mörker mot ett ljus.', 'publik'),
     (3, 5, 'Kort dikt om natt', 'Natten bar mig över vatten och sten.', 'publik');
 
@@ -186,15 +192,15 @@ SELECT * FROM Poster;
 -- Inject: PostBegrepp
 -- Här kopplas olika begrepp till olika poster
 -- Detta visar många-till-många-relationen i databasen
-INSERT INTO PostBegrepp (PostID, BegreppID, RelationTyp, Kommentar) VALUES
-    (1, 1, 'huvudsymbol', 'Ormen var central i drömmen'),
-    (1, 3, 'huvudsymbol', 'Templet var platsen i drömmen'),
-    (1, 4, 'farg', 'Ormen var svart'),
-    (2, 1, 'aterkommande tema', 'Reflektionen kopplar tillbaka till drömmen om ormen'),
-    (3, 2, 'huvudsymbol', 'Vatten är huvudtemat i denna tanke'),
-    (4, 5, 'huvudsymbol', 'Eld var den tydligaste symbolen'),
-    (5, 6, 'huvudsymbol', 'Visionen handlade om en resa'),
-    (6, 2, 'bisyftning', 'Vatten finns med i dikten');
+INSERT INTO PostBegrepp (PostID, BegreppID) VALUES
+    (1, 1),
+    (1, 3),
+    (1, 4),
+    (2, 1),
+    (3, 2),
+    (4, 5),
+    (5, 6),
+    (6, 2);
 
 -- Query
 -- Denna SELECT visar alla kopplingar mellan poster och begrepp
@@ -231,9 +237,7 @@ ORDER BY SkapadDatum DESC;
 SELECT
     PostBegrepp.PostID,
     Poster.Titel,
-    Begrepp.Ord,
-    PostBegrepp.RelationTyp,
-    PostBegrepp.Kommentar
+    Begrepp.Ord
 FROM PostBegrepp
 JOIN Poster ON PostBegrepp.PostID = Poster.PostID
 JOIN Begrepp ON PostBegrepp.BegreppID = Begrepp.BegreppID;
@@ -301,8 +305,7 @@ SELECT
     Poster.Titel,
     Anvandare.Anvandarnamn,
     Kategorier.Namn AS Kategori,
-    Begrepp.Ord,
-    PostBegrepp.RelationTyp
+    Begrepp.Ord
 FROM Poster
 INNER JOIN Anvandare ON Poster.AnvandarID = Anvandare.AnvandarID
 INNER JOIN Kategorier ON Poster.KategoriID = Kategorier.KategoriID

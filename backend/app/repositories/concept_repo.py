@@ -45,7 +45,7 @@ def get_concepts_by_post_id(post_id: int):
     with get_cursor() as cursor:
         cursor.execute(
             """
-            SELECT pb.PostBegreppID, pb.RelationTyp, pb.Kommentar,
+            SELECT pb.PostBegreppID,
                    b.BegreppID, b.Ord, b.Beskrivning
             FROM PostBegrepp pb
             INNER JOIN Begrepp b ON pb.BegreppID = b.BegreppID
@@ -58,8 +58,6 @@ def get_concepts_by_post_id(post_id: int):
         return [
             {
                 "post_begrepp_id": r["PostBegreppID"],
-                "relation_typ": r["RelationTyp"],
-                "kommentar": r["Kommentar"],
                 "begrepp": {
                     "begrepp_id": r["BegreppID"],
                     "ord": r["Ord"],
@@ -70,12 +68,12 @@ def get_concepts_by_post_id(post_id: int):
         ]
 
 
-def link_concept_to_post(post_id: int, begrepp_id: int, relation_typ: str, kommentar: str | None) -> int:
+def link_concept_to_post(post_id: int, begrepp_id: int) -> int:
     """Kopplar begrepp till post. Returnerar PostBegreppID."""
     with get_cursor() as cursor:
         cursor.execute(
-            "INSERT INTO PostBegrepp (PostID, BegreppID, RelationTyp, Kommentar) VALUES (%s, %s, %s, %s)",
-            (post_id, begrepp_id, relation_typ, kommentar or ""),
+            "INSERT INTO PostBegrepp (PostID, BegreppID) VALUES (%s, %s)",
+            (post_id, begrepp_id),
         )
         return cursor.lastrowid
 

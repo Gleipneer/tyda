@@ -1,5 +1,7 @@
 """Pydantic-scheman för poster."""
 from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -23,7 +25,7 @@ class PostListItem(BaseModel):
     post_id: int
     titel: str
     innehall: str
-    synlighet: str
+    synlighet: Literal["privat", "publik"]
     skapad_datum: datetime
     anvandar: UserRef
     kategori: CategoryRef
@@ -42,7 +44,7 @@ class PostCreate(BaseModel):
     kategori_id: int
     titel: str
     innehall: str
-    synlighet: str = "privat"
+    synlighet: Literal["privat", "publik"] = "privat"
 
 
 class PostUpdate(BaseModel):
@@ -50,5 +52,5 @@ class PostUpdate(BaseModel):
 
     titel: str | None = None
     innehall: str | None = None
-    synlighet: str | None = None
+    synlighet: Literal["privat", "publik"] | None = None
     kategori_id: int | None = None

@@ -104,19 +104,9 @@ Tabellen **PostBegrepp** är kopplingstabellen mellan **Poster** och **Begrepp**
 Här sparas:
 - vilken post det gäller
 - vilket begrepp det gäller
-- relationstyp
-- kommentar
 
-Jag valde också att ha med **RelationTyp**, till exempel:
-- `huvudsymbol`
-- `bisyftning`
-- `aterkommande tema`
-- `farg`
-
-Det gör att kopplingen inte bara blir teknisk, utan också säger något om *hur* begreppet hör ihop med posten.
-
-Det finns också en `UNIQUE`-regel på kombinationen av post, begrepp och relationstyp.  
-Det valde jag för att undvika att exakt samma koppling läggs in flera gånger.
+Det finns en `UNIQUE`-regel på kombinationen av post och begrepp.  
+Det hindrar att samma begrepp kopplas dubbelt till samma post.
 
 Kort metafor:  
 **PostBegrepp är bron mellan texten och symboliken.**

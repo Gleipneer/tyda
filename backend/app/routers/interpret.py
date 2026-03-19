@@ -155,13 +155,13 @@ def _get_post_with_concepts(conn, post_id: int) -> dict | None:
     if not post:
         return None
     cur.execute(
-        "SELECT b.Ord, pb.RelationTyp FROM PostBegrepp pb "
+        "SELECT b.Ord FROM PostBegrepp pb "
         "JOIN Begrepp b ON pb.BegreppID = b.BegreppID WHERE pb.PostID = %s",
         (post_id,),
     )
     concepts = cur.fetchall()
     cur.close()
-    post["begrepp"] = [f"{c['Ord']} ({c['RelationTyp']})" for c in concepts]
+    post["begrepp"] = [c["Ord"] for c in concepts]
     return post
 
 

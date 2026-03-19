@@ -92,6 +92,10 @@ def main():
             "007_lexicon_dromtolkning.sql",
             "008_precision_dromtolkning.sql",
             "009_database_truth_consolidation.sql",
+            "010_drop_relationtyp.sql",
+            "011_drop_kommentar.sql",
+            "012_drop_idx_postbegrepp_post.sql",
+            "013_synlighet_privat_publik.sql",
         ]:
             path = os.path.join(migrations_dir, name)
             if os.path.exists(path):

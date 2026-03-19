@@ -267,9 +267,13 @@ export default function NewPostPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ge din post en titel"
+                  maxLength={150}
                   className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm font-body text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
                   required
                 />
+                <p className="mt-1 text-xs font-body text-muted-foreground">
+                  {title.length} / 150
+                </p>
               </div>
 
               <div>
@@ -400,7 +404,7 @@ export default function NewPostPage() {
                     className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-body text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
                   >
                     <option value="privat">Privat</option>
-                    <option value="publik">Offentlig</option>
+                    <option value="publik">Publik</option>
                   </select>
                   <p className="mt-2 text-xs font-body leading-relaxed text-muted-foreground">
                     {visibility === "privat"

@@ -28,8 +28,8 @@ def list_posts(
     synlighet: str | None = Query(None),
 ):
     """Hämtar poster med valfri filtrering."""
-    if synlighet is not None and synlighet not in ("privat", "delad", "publik"):
-        raise HTTPException(status_code=400, detail="Synlighet must be privat, delad or publik")
+    if synlighet is not None and synlighet not in ("privat", "publik"):
+        raise HTTPException(status_code=400, detail="Synlighet must be privat or publik")
     return post_repo.get_all_posts(anvandar_id=anvandar_id, synlighet=synlighet)
 
 
@@ -51,8 +51,8 @@ def create_post(data: PostCreate):
         raise HTTPException(status_code=400, detail="Titel is required")
     if not data.innehall or not data.innehall.strip():
         raise HTTPException(status_code=400, detail="Innehall is required")
-    if data.synlighet not in ("privat", "delad", "publik"):
-        raise HTTPException(status_code=400, detail="Synlighet must be privat, delad or publik")
+    if data.synlighet not in ("privat", "publik"):
+        raise HTTPException(status_code=400, detail="Synlighet must be privat or publik")
 
     if not user_repo.get_user_by_id(data.anvandar_id):
         raise HTTPException(status_code=400, detail="User not found")

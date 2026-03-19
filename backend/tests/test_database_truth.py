@@ -76,6 +76,75 @@ def test_delete_rules_are_explicit_for_post_children():
     ]
 
 
+def test_postbegrepp_has_no_relationtyp():
+    """RelationTyp har tagits bort från PostBegrepp (migration 010)."""
+    rows = _fetchall(
+        """
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'postbegrepp'
+        ORDER BY ORDINAL_POSITION
+        """
+    )
+    columns = [r["COLUMN_NAME"] for r in rows]
+    assert "RelationTyp" not in columns
+    assert "Kommentar" not in columns
+    assert "PostBegreppID" in columns
+    assert "PostID" in columns
+    assert "BegreppID" in columns
+
+
+def test_postbegrepp_unique_on_postid_begreppid():
+    """PostBegrepp har UNIQUE (PostID, BegreppID) efter migration 010."""
+    rows = _fetchall(
+        """
+        SELECT INDEX_NAME, COLUMN_NAME
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'postbegrepp'
+          AND INDEX_NAME = 'postbegrepp_postid_begreppid_unique'
+        ORDER BY SEQ_IN_INDEX
+        """
+    )
+    cols = [r["COLUMN_NAME"] for r in rows]
+    assert cols == ["PostID", "BegreppID"]
+
+
+def test_postbegrepp_no_redundant_post_index():
+    """idx_postbegrepp_post är borttagen (migration 012), UNIQUE täcker PostID."""
+    rows = _fetchall(
+        """
+        SELECT INDEX_NAME
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'postbegrepp'
+        GROUP BY INDEX_NAME
+        """
+    )
+    names = [r["INDEX_NAME"] for r in rows]
+    assert "idx_postbegrepp_post" not in names
+    assert "idx_postbegrepp_begrepp" in names
+
+
+def test_poster_synlighet_enum_privat_publik():
+    """Poster.Synlighet är ENUM('privat','publik') efter migration 013."""
+    rows = _fetchall(
+        """
+        SELECT COLUMN_TYPE
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'poster'
+          AND COLUMN_NAME = 'Synlighet'
+        """
+    )
+    assert len(rows) == 1
+    col_type = rows[0]["COLUMN_TYPE"].upper()
+    assert "DELAD" not in col_type
+    assert "PRIVAT" in col_type
+    assert "PUBLIK" in col_type
+
+
 def test_trigger_and_procedure_still_exist():
     triggers = _fetchall(
         """

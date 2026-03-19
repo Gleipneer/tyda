@@ -60,7 +60,7 @@ Fyll i:
 - titel
 - innehåll
 - kategori
-- synlighet: `Privat` eller `Offentlig` i UI:t. Datamodellen bakom använder `privat`, `delad`, `publik`
+- synlighet: `Privat` eller `Publik` i UI:t. Datamodellen bakom använder `privat` och `publik`
 
 Det som händer medan du skriver:
 
@@ -71,7 +71,7 @@ Det som händer medan du skriver:
 När du sparar:
 
 - `privat` stannar i ditt eget rum
-- `Offentlig` i UI:t sparas som `publik` och blir synlig i `Utforska`
+- `Publik` i UI:t sparas som `publik` och blir synlig i `Utforska`
 - du skickas vidare till postens detaljsida
 
 ## 5. Vad du ska testa manuellt

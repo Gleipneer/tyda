@@ -183,7 +183,7 @@ export default function LandingPage() {
             </figure>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {["Poster börjar i ditt rum.", "Tyda hjälper dig se mönster.", "Offentligt och privat hålls isär."].map(
+              {["Poster börjar i ditt rum.", "Tyda hjälper dig se mönster.", "Publik och privat hålls isär."].map(
                 (item) => (
                   <span
                     key={item}

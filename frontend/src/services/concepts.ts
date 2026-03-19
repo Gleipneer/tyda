@@ -8,8 +8,6 @@ export interface Concept {
 
 export interface PostConcept {
   post_begrepp_id: number;
-  relation_typ: string;
-  kommentar: string | null;
   begrepp: Concept;
 }
 
@@ -34,11 +32,9 @@ export function fetchMatchedConcepts(postId: number): Promise<{ matches: Matched
   return get<{ matches: MatchedConcept[] }>(`/posts/${postId}/matched-concepts`);
 }
 
-export function linkConcept(postId: number, begreppId: number, relationTyp: string, kommentar?: string): Promise<{ post_begrepp_id: number }> {
+export function linkConcept(postId: number, begreppId: number): Promise<{ post_begrepp_id: number }> {
   return post<{ post_begrepp_id: number }>(`/posts/${postId}/concepts`, {
     begrepp_id: begreppId,
-    relation_typ: relationTyp,
-    kommentar: kommentar ?? "",
   });
 }
 

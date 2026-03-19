@@ -210,7 +210,6 @@ export default function PostDetailPage() {
                   concepts.map((c) => (
                     <div key={c.post_begrepp_id} className="flex items-center gap-2">
                       <ConceptBadge label={c.begrepp.ord} type="manual" />
-                      {c.kommentar && <span className="text-xs text-muted-foreground font-body italic">{c.kommentar}</span>}
                       {!isPublicView && (
                         <button
                           type="button"
@@ -268,7 +267,7 @@ export default function PostDetailPage() {
               />
             ) : (
               <ContentCard>
-                <h2 className="text-sm font-display font-medium text-foreground mb-2">Offentlig läsning</h2>
+                <h2 className="text-sm font-display font-medium text-foreground mb-2">Publik läsning</h2>
                 <p className="text-sm text-muted-foreground font-body leading-relaxed">
                   Du läser nu en post från den publika sidan av Tyda. AI-tolkningen är reserverad för den som arbetar i sitt eget rum.
                 </p>

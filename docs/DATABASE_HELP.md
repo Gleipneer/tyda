@@ -21,7 +21,7 @@ En liten relationsdatabas för att spara drömmar, tankar och reflektioner. Den 
 
 **Begrepp** – Ord som kan kopplas till poster (orm, vatten, tempel, eld…). Ett litet symbollexikon.
 
-**PostBegrepp** – Kopplingstabellen. En post kan ha många begrepp, ett begrepp kan finnas i många poster. Här sparas också typ (huvudsymbol, bisyftning osv) och en valfri text om kopplingen.
+**PostBegrepp** – Kopplingstabellen. En post kan ha många begrepp, ett begrepp kan finnas i många poster.
 
 **AktivitetLogg** – En enkel loggtabell. I dagens implementation skriver triggern en rad här när en post skapas. Det är inte en full revisionshistorik.
 
@@ -39,13 +39,7 @@ En liten relationsdatabas för att spara drömmar, tankar och reflektioner. Den 
 
 ## Varför PostBegrepp?
 
-Utan den skulle vi inte kunna koppla flera begrepp till en post. PostBegrepp är bron. Den lagrar också *hur* begreppet hör ihop (huvudsymbol, bisyftning…) och en kort beskrivning om du vill.
-
----
-
-## PostBegrepp.Kommentar
-
-Det är en kolumn som beskriver kopplingen – t.ex. "Ormen var central i drömmen". Inte samma sak som en kommentarsfunktion. Bara en text om relationen.
+Utan den skulle vi inte kunna koppla flera begrepp till en post. PostBegrepp är bron.
 
 ---
 

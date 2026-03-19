@@ -81,7 +81,7 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 - Navigationen är mobile-first: toppnavigation på större skärmar och menyknapp på smalare vyer.
 - Aktiv användare väljs på startsidan och kan lämnas via `Byt användare` i headern på desktop eller i menyn på smalare vyer.
 - Skrivflödet ligger i `Ny post`: titel, innehåll, kategori och synlighet. Utkast sparas lokalt per aktiv användare.
-- Kategori väljs vid skapande av posten. UI:t använder främst `Privat` och `Offentlig`; i databasen/API:t finns värdena `privat`, `delad`, `publik`.
+- Kategori väljs vid skapande av posten. UI:t använder `Privat` och `Publik`; i databasen/API:t finns värdena `privat` och `publik`.
 - AI-tolkning körs från postdetaljen och har nu modellval i UI:t. Frontend hämtar tillåtna modeller från backend och skickar vald modell till interpret-endpointen.
 - Databasen är fortfarande avsiktligt liten: 6 tabeller, 1 trigger, 1 lagrad procedur. Automatisk matchning och AI-tolkning ligger främst i backend, inte i schemat.
 - Testbarheten bygger just nu främst på stabila routes, roller/labels/placeholders och runtime-testet för ny-post-flödet i `frontend/e2e-runtime/newpost-runtime.spec.ts`.
@@ -96,6 +96,10 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 - `POST /api/posts` – skapa post
 - `POST /api/posts/{id}/interpret` – AI-tolkning (kräver OPENAI_API_KEY)
 - m.fl. (se docs/API_PLAN.md)
+
+## Säkerhetsstrategi
+
+Databasen följer least-privilege: applikationen använder en dedikerad användare `reflektionsarkiv_app` med endast DML-rättigheter (SELECT, INSERT, UPDATE, DELETE). DROP/CREATE/ALTER ges inte till app-användaren. Skriptet `database/scripts/grants.sql` skapar användaren och sätter rättigheter. Kör det som root/admin innan produktion.
 
 ## Dokumentation
 

@@ -27,7 +27,7 @@ const tables = [
   {
     name: "PostBegrepp",
     description: "Kopplingstabellen mellan poster och begrepp. Här sparas bara manuella kopplingar.",
-    fields: "PostBegreppID, PostID, BegreppID, RelationTyp, Kommentar",
+    fields: "PostBegreppID, PostID, BegreppID",
   },
   {
     name: "AktivitetLogg",
@@ -76,7 +76,7 @@ WHERE p.PostID = %s;`,
     source: "Används i systemet",
     description: "Här läser systemet de begrepp som faktiskt är sparade i kopplingstabellen PostBegrepp.",
     sql: `SELECT
-    pb.PostBegreppID, pb.RelationTyp, pb.Kommentar,
+    pb.PostBegreppID,
     b.BegreppID, b.Ord, b.Beskrivning
 FROM PostBegrepp pb
 INNER JOIN Begrepp b ON pb.BegreppID = b.BegreppID
@@ -210,8 +210,7 @@ export default function AboutDatabasePage() {
 
                 <rect x="578" y="182" width="230" height="84" rx="10" className="fill-warm stroke-warm-dark" strokeWidth="1.5" />
                 <text x="693" y="210" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>PostBegrepp</text>
-                <text x="693" y="232" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>PostBegreppID, PostID, BegreppID,</text>
-                <text x="693" y="246" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>RelationTyp, Kommentar</text>
+                <text x="693" y="232" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>PostBegreppID, PostID, BegreppID</text>
 
                 <rect x="302" y="312" width="220" height="84" rx="10" className="fill-accent stroke-primary" strokeWidth="1.5" />
                 <text x="412" y="340" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>AktivitetLogg</text>
@@ -242,7 +241,7 @@ export default function AboutDatabasePage() {
             </div>
           </div>
           <div className="mt-4 space-y-2 text-xs font-body leading-relaxed text-muted-foreground">
-            <p>`Poster.Synlighet` har databasvärdena `privat`, `delad`, `publik`. Nuvarande huvudflöde i produkten använder främst `privat` och `publik`.</p>
+            <p>`Poster.Synlighet` har databasvärdena `privat`, `publik`.</p>
             <p>`PostBegrepp` och `AktivitetLogg` rensas när en post tas bort. Det är nu explicit i delete-strategin, inte bara något appkoden råkar göra.</p>
           </div>
         </ContentCard>
@@ -308,7 +307,7 @@ export default function AboutDatabasePage() {
             <ol className="space-y-3 text-sm font-body text-foreground">
               <li className="flex items-start gap-3">
                 <span className="shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">1</span>
-                <span>Du skriver titel och innehåll, väljer kategori och bestämmer synlighet. I UI:t står det Privat eller Offentlig; i databasen sparas värden som `privat`, `delad`, `publik`.</span>
+                <span>Du skriver titel och innehåll, väljer kategori och bestämmer synlighet. I UI:t står det Privat eller Publik; i databasen sparas värden som `privat`, `publik`.</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">2</span>
@@ -320,7 +319,7 @@ export default function AboutDatabasePage() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">4</span>
-                <span>Om du kopplar begrepp manuellt senare sparas de i `PostBegrepp` med `RelationTyp` och eventuell kommentar. Automatisk matchning förblir ett beräknat underlag.</span>
+                <span>Om du kopplar begrepp manuellt senare sparas de i `PostBegrepp`. Automatisk matchning förblir ett beräknat underlag.</span>
               </li>
             </ol>
           </ContentCard>

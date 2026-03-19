@@ -3,14 +3,12 @@ import type { Synlighet } from "@/types/posts";
 
 const styles: Record<Synlighet, string> = {
   privat: "bg-secondary text-secondary-foreground border-border",
-  delad: "bg-warm text-warm-dark border-warm-dark/20",
   publik: "bg-accent text-accent-foreground border-primary/20",
 };
 
 const labels: Record<Synlighet, string> = {
   privat: "Privat",
-  delad: "Delad",
-  publik: "Offentlig",
+  publik: "Publik",
 };
 
 export default function VisibilityBadge({
