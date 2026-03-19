@@ -58,7 +58,7 @@
 
 - `Ny post` kräver titel och innehåll
 - Kategori väljs i samma skrivflöde och hämtas från backend
-- Synlighet väljs i UI:t som `Privat` eller `Offentlig`; i datamodellen finns värdena `privat`, `delad`, `publik`
+- Synlighet väljs i UI:t som `Privat` eller `Publik`; i datamodellen finns värdena `privat` och `publik`
 - Utkast sparas lokalt per aktiv användare
 - Mobil prioriterar skrivytan först; stödytan kommer direkt efter och desktop utökar samma ordning
 - Stödytan visar automatchade begrepp medan användaren skriver

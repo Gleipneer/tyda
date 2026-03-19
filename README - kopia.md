@@ -69,7 +69,7 @@ Där finns koppling till:
 - synlighet
 - skapadatum
 
-Jag valde att ha en kolumn för **Synlighet** med värdena `privat`, `delad` och `publik`.  
+Jag valde att ha en kolumn för **Synlighet** med värdena `privat` och `publik`.  
 Det gör att man kan visa att en post inte bara har innehåll, utan också ett enkelt statusläge.
 
 Kort metafor:  

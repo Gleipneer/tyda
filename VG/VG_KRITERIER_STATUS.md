@@ -12,7 +12,7 @@
 | Minst 3 sammanlänkade tabeller | ✅ UPPFYLLT | 6 tabeller: Anvandare, Kategorier, Poster, Begrepp, PostBegrepp, AktivitetLogg |
 | Implementera i RDBMS (MySQL/PostgreSQL) | ✅ UPPFYLLT | MySQL, mysql-connector-python |
 | Primär- och främmande nycklar | ✅ UPPFYLLT | Alla tabeller har PK, Poster/PostBegrepp/AktivitetLogg har FK |
-| Dataintegritet (NOT NULL, CHECK, DEFAULT, FK) | ⚠️ DELVIS | NOT NULL, DEFAULT, FK, ENUM, UNIQUE finns. CHECK saknas (se VG_ATERSTAENDE) |
+| Dataintegritet (NOT NULL, CHECK, DEFAULT, FK) | ✅ UPPFYLLT | NOT NULL, DEFAULT, FK, ENUM, UNIQUE, CHECK (titel) |
 | Minst en trigger | ✅ UPPFYLLT | trigga_ny_post_logg |
 | JOIN och GROUP BY i minst 2 frågor | ✅ UPPFYLLT | reflektionsarkiv.sql + backend repositories |
 | Motivera i README | ⚠️ DELVIS | README har översikt, saknar stark reflektion om designval |
@@ -23,10 +23,10 @@
 
 | Kriterium | Status | Validering |
 |-----------|--------|------------|
-| Välj SQL/NoSQL och motivera | ⚠️ DELVIS | MySQL används, explicit motivering saknas i README |
+| Välj SQL/NoSQL och motivera | ✅ UPPFYLLT | README motiverar varför relationsdatabas valdes |
 | Lagrad procedur | ✅ UPPFYLLT | hamta_poster_per_kategori |
 | Säkerhetsstrategi (GRANT/REVOKE) | ✅ UPPFYLLT | database/scripts/grants.sql, README Säkerhetsstrategi |
-| Prestandaanalys och indexering | ✅ UPPFYLLT | Index motiverade, migration 012 städade redundans. EXPLAIN-dokumentation kan stärkas |
+| Prestandaanalys och indexering | ✅ UPPFYLLT | docs/PRESTANDANALYS.md med EXPLAIN och indexmotivering |
 
 ---
 

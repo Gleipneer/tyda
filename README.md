@@ -99,11 +99,51 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 
 ## Säkerhetsstrategi
 
-Databasen följer least-privilege: applikationen använder en dedikerad användare `reflektionsarkiv_app` med endast DML-rättigheter (SELECT, INSERT, UPDATE, DELETE). DROP/CREATE/ALTER ges inte till app-användaren. Skriptet `database/scripts/grants.sql` skapar användaren och sätter rättigheter. Kör det som root/admin innan produktion.
+Databasen följer least-privilege: applikationen använder en dedikerad användare `reflektionsarkiv_app` med endast DML-rättigheter (SELECT, INSERT, UPDATE, DELETE). DROP/CREATE/ALTER ges inte till app-användaren. Skriptet `database/scripts/grants.sql` skapar användaren och sätter rättigheter. Kör det som root/admin innan produktion:
+
+```bash
+mysql -u root -p < database/scripts/grants.sql
+```
+
+## Reflektion – databasval och design
+
+### Varför MySQL / relationsdatabas
+
+Projektet använder en relationsdatabas (MySQL) eftersom datan är strukturerad: användare, poster, kategorier, begrepp och kopplingar mellan dem. Relationsmodellen med primärnycklar, främmande nycklar och JOIN:s passar väl. NoSQL (t.ex. dokument- eller nyckelvärdesdatabas) hade krävt mer applikationslogik för relationer som redan löses enkelt i SQL.
+
+### Varför denna tabellstruktur
+
+- **Anvandare, Kategorier, Poster, Begrepp** – separata tabeller för återanvändning och normalisering.
+- **PostBegrepp** – kopplingstabell för många-till-många mellan Poster och Begrepp. En post kan ha många begrepp, ett begrepp kan finnas i många poster. UNIQUE(PostID, BegreppID) hindrar dubbletter.
+- **AktivitetLogg** – enkel logg separat från postdatan. Triggern skriver en rad när en post skapas.
+
+### Varför Synlighet bara är privat och publik
+
+Tidigare fanns `delad` som tredje alternativ. Det togs bort för att förenkla: användaren behöver veta om posten är privat (bara i mitt rum) eller publik (synlig i Utforska). Två tydliga lägen räcker för kursnivån.
+
+### Varför PostBegrepp saknar Kommentar
+
+Kolumnen Kommentar togs bort som designval. Ingen UI använde den, och modellen blev enklare. Manuella begreppskopplingar sparas utan kommentar.
+
+### Varför triggern och proceduren finns
+
+- **Trigger** `trigga_ny_post_logg` – automatiskt loggande vid ny post. Visar att databasen kan reagera på händelser.
+- **Procedure** `hamta_poster_per_kategori` – databasnära analys. Visar att logik kan ligga i databasen.
+
+### Index och prestanda
+
+Index finns där appen filtrerar och joinar: Poster (AnvandarID, KategoriID, SkapadDatum), PostBegrepp (UNIQUE + idx på BegreppID), AktivitetLogg (PostID, Tidpunkt). Redundanta index har tagits bort. Se `docs/PRESTANDANALYS.md` för EXPLAIN och motivering.
+
+### Säkerhet och integritet
+
+- Parameteriserade frågor (inga SQL-injection via strängkonkatenering).
+- Begränsat databaskonto via `grants.sql`.
+- Constraints: NOT NULL, ENUM, UNIQUE, FOREIGN KEY, CHECK (titel får inte vara tom).
 
 ## Dokumentation
 
 - `docs/DATABASE_HELP.md` – databasen förklarad (pedagogiskt)
+- `docs/PRESTANDANALYS.md` – prestanda och index
 - `docs/API_PLAN.md` – API-endpoints
 - `frontend/public/runbook.md` – praktisk runbook för start, manuell användning och test
 - `docs/STATUS.md` – projektstatus

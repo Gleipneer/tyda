@@ -96,6 +96,7 @@ def main():
             "011_drop_kommentar.sql",
             "012_drop_idx_postbegrepp_post.sql",
             "013_synlighet_privat_publik.sql",
+            "014_add_check_titel.sql",
         ]:
             path = os.path.join(migrations_dir, name)
             if os.path.exists(path):

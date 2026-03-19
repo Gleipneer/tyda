@@ -20,39 +20,27 @@
 
 ---
 
-## 2. CHECK-constraint
+## 2. CHECK-constraint ✅ KLAR
 
 **Krav:** "Säkerställ dataintegritet genom constraints (NOT NULL, CHECK, DEFAULT, FOREIGN KEY)."
 
-**Åtgärd:**
-- Lägg till t.ex. `CHECK (CHAR_LENGTH(TRIM(Titel)) > 0)` på Poster.Titel (MySQL 8.0.16+)
-- Eller `CHECK (Anvandarnamn != '')` på Anvandare
-
-**Motivering om det INTE görs:** ENUM och NOT NULL ger redan stark integritet. CHECK stärker försvaret men är inte strikt nödvändigt för G.
+**Åtgärd:** Migration 014 lade till `chk_poster_titel_nonempty CHECK (CHAR_LENGTH(Titel) > 0)` på Poster.Titel.
 
 ---
 
-## 3. README-reflektion
+## 3. README-reflektion ✅ KLAR
 
 **Krav:** "Motivera dina val av databasstruktur och säkerhetsåtgärder i en skriftlig reflektion i README.md."
 
-**Åtgärd:**
-- Lägg till README-sektion: "Databasens designval" med kort motivering för:
-  - Varför SQL/MySQL
-  - Varför denna tabellstruktur
-  - Säkerhetsåtgärder (parameteriserade frågor, .env, eventuellt GRANT)
-- Länka till `docs/VG_ANALYS_OCH_ATERSTAENDE.md`
+**Åtgärd:** README har sektion "Reflektion – databasval och design" med motivering för MySQL, tabellstruktur, PostBegrepp, Synlighet, Kommentar, trigger, procedure, index och säkerhet.
 
 ---
 
-## 4. Prestanda – EXPLAIN-dokumentation
+## 4. Prestanda – EXPLAIN-dokumentation ✅ KLAR
 
 **Krav:** "Analysera databasens prestanda och redogör för optimeringsmöjligheter (t.ex. indexering)."
 
-**Åtgärd:**
-- Kör `EXPLAIN` på 2–3 centrala frågor (t.ex. poster per användare, begrepp per post)
-- Spara resultat + kort tolkning i `docs/PRESTANDANALYS.md`
-- Förklara varför idx_postbegrepp_post togs bort (migration 012)
+**Åtgärd:** `docs/PRESTANDANALYS.md` skapad med EXPLAIN-frågor, indexstrategi och förklaring av borttaget idx_postbegrepp_post.
 
 ---
 

@@ -44,6 +44,7 @@ CREATE TABLE Poster (
     Titel VARCHAR(150) NOT NULL,
     Innehall TEXT NOT NULL,
     Synlighet ENUM('privat', 'publik') NOT NULL DEFAULT 'privat',
+    CONSTRAINT chk_poster_titel_nonempty CHECK (CHAR_LENGTH(Titel) > 0),
     SkapadDatum TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (AnvandarID) REFERENCES Anvandare(AnvandarID),
     FOREIGN KEY (KategoriID) REFERENCES Kategorier(KategoriID)

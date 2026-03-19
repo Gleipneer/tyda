@@ -2115,7 +2115,7 @@ Request body
 {
   "titel": "Ny titel",
   "innehall": "Uppdaterat innehåll",
-  "synlighet": "delad"
+  "synlighet": "publik"
 }
 Response 200
 {
@@ -3254,7 +3254,7 @@ type Post = {
   post_id: number;
   titel: string;
   innehall: string;
-  synlighet: "privat" | "delad" | "publik";
+  synlighet: "privat" | "publik";
   skapad_datum: string;
   anvandar: {
     anvandar_id: number;
@@ -3911,7 +3911,7 @@ titel får inte vara tom
 
 innehall får inte vara tom
 
-synlighet måste vara privat, delad eller publik
+synlighet måste vara privat eller publik
 
 Response
 

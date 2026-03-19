@@ -17,7 +17,7 @@ En liten relationsdatabas för att spara drömmar, tankar och reflektioner. Den 
 
 **Kategorier** – Typ av post: dröm, vision, tanke, reflektion, dikt.
 
-**Poster** – Själva inlägget. Titel, text, synlighet. Varje post tillhör en användare och en kategori.
+**Poster** – Själva inlägget. Titel, text, synlighet (privat eller publik). Varje post tillhör en användare och en kategori. CHECK säkerställer att titel inte är tom.
 
 **Begrepp** – Ord som kan kopplas till poster (orm, vatten, tempel, eld…). Ett litet symbollexikon.
 

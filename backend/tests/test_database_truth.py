@@ -145,6 +145,21 @@ def test_poster_synlighet_enum_privat_publik():
     assert "PUBLIK" in col_type
 
 
+def test_poster_has_check_titel():
+    """Poster har CHECK-constraint för icke-tom titel (migration 014)."""
+    rows = _fetchall(
+        """
+        SELECT CONSTRAINT_NAME
+        FROM information_schema.TABLE_CONSTRAINTS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'poster'
+          AND CONSTRAINT_TYPE = 'CHECK'
+          AND CONSTRAINT_NAME = 'chk_poster_titel_nonempty'
+        """
+    )
+    assert len(rows) >= 1
+
+
 def test_trigger_and_procedure_still_exist():
     triggers = _fetchall(
         """
