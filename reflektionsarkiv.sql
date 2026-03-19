@@ -1,6 +1,7 @@
 /*
 SQL slutprojekt "Reflektionsarkiv".
 Joakim Emilsson - YH24
+Martin Fält - YH24
 */
 
 -- Tar bort databasen om den redan finns så att filen går att köra om från början
@@ -22,6 +23,8 @@ CREATE TABLE Anvandare (
     AnvandarID INT AUTO_INCREMENT PRIMARY KEY,
     Anvandarnamn VARCHAR(100) NOT NULL,
     Epost VARCHAR(255) NOT NULL UNIQUE,
+    LosenordHash VARCHAR(255) NOT NULL,
+    ArAdmin TINYINT(1) NOT NULL DEFAULT 0,
     SkapadDatum TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -98,6 +101,7 @@ CREATE TABLE AktivitetLogg (
 );
 
 -- Skapar index som matchar hur aktivitetsloggen läses per post i appen
+-- Optimerar hämtning av aktivitetsloggar per post i tidsordning
 CREATE INDEX idx_aktivitetlogg_post_tidpunkt ON AktivitetLogg(PostID, Tidpunkt);
 
 -- Trigger: trigga_ny_post_logg
@@ -150,12 +154,12 @@ INSERT INTO Kategorier (Namn, Beskrivning) VALUES
 -- Denna SELECT visar alla kategorier i tabellen Kategorier
 SELECT * FROM Kategorier;
 
--- Inject: Anvandare
--- Här lägger jag in tre användare
-INSERT INTO Anvandare (Anvandarnamn, Epost) VALUES
-    ('Joakim Emilsson', 'joakim@example.com'),
-    ('Anna Svensson', 'anna@example.com'),
-    ('Elias Holm', 'elias@example.com');
+-- Inject: Anvandare (lösenord lagras som bcrypt-hash; demo-lösenord: docs/INLOGGNING_DEMO.md)
+INSERT INTO Anvandare (Anvandarnamn, Epost, LosenordHash, ArAdmin) VALUES
+    ('Joakim Emilsson', 'emilssonjoakim@gmail.com', '$2b$12$JsvVfxd4YURGKTxQhNzbW.Z8SZzWuQrk2AoIc4JcE0AyuMAR1pEr2', 0),
+    ('Anna Svensson', 'anna@example.com', '$2b$12$w0ybC1ULTmPbKFxzdt9TruV6Bw7IPpApx5UNKMXwiewtvAiAARz4K', 0),
+    ('Elias Holm', 'elias@example.com', '$2b$12$w0ybC1ULTmPbKFxzdt9TruV6Bw7IPpApx5UNKMXwiewtvAiAARz4K', 0),
+    ('Admin', 'admin@tyda.local', '$2b$12$Bgbobq7Syp3FZIzfrnU5OOjTw76.W3BfU5wYkOHoLyIoxJ0wHBWIG', 1);
 
 -- Query
 -- Denna SELECT visar alla användare i tabellen Anvandare

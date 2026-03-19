@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity,
-  ArrowRightLeft,
   BarChart3,
   BookOpen,
   Compass,
@@ -53,7 +52,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const handleSwitchUser = () => {
     clearActiveUser();
     setDrawerOpen(false);
-    navigate("/?mode=existing&session=switch#kom-igang");
+    navigate("/?mode=login&session=switch#kom-igang");
   };
 
   useEffect(() => {
@@ -132,6 +131,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-muted">Aktiv profil</p>
                   <p className="max-w-[132px] truncate text-sm font-body text-sidebar-foreground">
                     {activeUser.anvandarnamn}
+                    {activeUser.ar_admin ? (
+                      <span className="ml-1.5 rounded-full bg-amber-500/25 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-900 dark:text-amber-100">
+                        Admin
+                      </span>
+                    ) : null}
                   </p>
                 </div>
                 <Link
@@ -146,8 +150,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   onClick={handleSwitchUser}
                   className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-body text-sidebar-foreground/88 transition-colors hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
                 >
-                  <ArrowRightLeft className="h-3.5 w-3.5" />
-                  Byt användare
+                  <LogOut className="h-3.5 w-3.5" />
+                  Logga ut
                 </button>
               </div>
             ) : (
@@ -210,7 +214,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className="inline-flex items-center gap-2 text-xs font-body text-sidebar-muted transition-colors hover:text-sidebar-foreground"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                Logga ut och välj användare
+                Logga ut
               </button>
             ) : (
               <Link
@@ -276,15 +280,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       onClick={handleSwitchUser}
                       className="inline-flex items-center gap-2 rounded-full border border-sidebar-border/80 px-3.5 py-2 text-xs font-body text-sidebar-foreground"
                     >
-                      <ArrowRightLeft className="h-3.5 w-3.5" />
-                      Byt användare
+                      <LogOut className="h-3.5 w-3.5" />
+                      Logga ut
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="mt-4 rounded-2xl border border-sidebar-border/80 bg-sidebar-accent/60 p-4">
                   <p className="text-sm font-body text-sidebar-foreground">
-                    Skapa eller välj en lokal användare för att öppna ditt eget rum.
+                    Logga in eller skapa konto för att öppna ditt rum.
                   </p>
                 </div>
               )}
@@ -353,7 +357,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   className="inline-flex items-center gap-2 text-xs text-sidebar-muted hover:text-sidebar-foreground"
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  Logga ut och välj användare
+                  Logga ut
                 </button>
               ) : (
                 <Link

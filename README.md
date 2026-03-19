@@ -90,7 +90,9 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 
 - `GET /api/health` – backend igång
 - `GET /api/db-health` – databasanslutning
-- `GET /api/users` – användare
+- `POST /api/auth/login` – inloggning (`identifier` + `password`; se `docs/INLOGGNING_DEMO.md`)
+- `POST /api/users` – skapa konto (`anvandarnamn`, `epost`, `losenord` minst 8 tecken)
+- `GET /api/users/{id}` – en användare
 - `GET /api/categories` – kategorier
 - `GET /api/posts` – poster
 - `POST /api/posts` – skapa post
@@ -99,11 +101,19 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 
 ## Säkerhetsstrategi
 
-Databasen följer least-privilege: applikationen använder en dedikerad användare `reflektionsarkiv_app` med endast DML-rättigheter (SELECT, INSERT, UPDATE, DELETE). DROP/CREATE/ALTER ges inte till app-användaren. Skriptet `database/scripts/grants.sql` skapar användaren och sätter rättigheter. Kör det som root/admin innan produktion:
+Databasen följer **least privilege**: applikationen ska använda `reflektionsarkiv_app` med begränsade rättigheter. Skriptet `database/scripts/grants.sql` gör i korthet:
+
+1. **`REVOKE ALL PRIVILEGES`** på `reflektionsarkiv.*` för app-användaren (nollställer gamla/överblivna rättigheter).
+2. **`GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE`** – ingen DDL (CREATE/DROP/ALTER-tabeller) för appkontot.
+3. **Valfritt:** `reflektionsarkiv_admin` med `ALL PRIVILEGES` på *endast* databasen `reflektionsarkiv` – för migrationer/schema utan att använda root (om du vill).
+
+**Körordning:** skapa databas/tabeller först (`reflektionsarkiv.sql` eller `reset_database.py`), *sedan*:
 
 ```bash
 mysql -u root -p < database/scripts/grants.sql
 ```
+
+**Fördjupning (GRANT, REVOKE, hur du loggar in som admin, varför det inte finns webb-adminportal i Tyda):** se [`docs/DATABASE_SAKERHET.md`](docs/DATABASE_SAKERHET.md).
 
 ## Reflektion – databasval och design
 
@@ -137,11 +147,14 @@ Index finns där appen filtrerar och joinar: Poster (AnvandarID, KategoriID, Ska
 ### Säkerhet och integritet
 
 - Parameteriserade frågor (inga SQL-injection via strängkonkatenering).
+- Inloggning: `POST /api/auth/login` jämför lösenord mot **bcrypt-hash** i `Anvandare.LosenordHash`. Demo-konton: `docs/INLOGGNING_DEMO.md`.
 - Begränsat databaskonto via `grants.sql`.
 - Constraints: NOT NULL, ENUM, UNIQUE, FOREIGN KEY, CHECK (titel får inte vara tom).
+- **Känd begränsning:** skriv-API (t.ex. skapa post) litar fortfarande på `anvandar_id` från klienten; riktig produktion kräver session/JWT kopplad till inloggning.
 
 ## Dokumentation
 
+- `docs/DATABASE_SAKERHET.md` – GRANT/REVOKE, MySQL-admin vs appanvändare, ingen adminportal
 - `docs/DATABASE_HELP.md` – databasen förklarad (pedagogiskt)
 - `docs/PRESTANDANALYS.md` – prestanda och index
 - `docs/API_PLAN.md` – API-endpoints

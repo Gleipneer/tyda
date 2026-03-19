@@ -16,9 +16,9 @@ Alla endpoints under `/api`. JSON request/response.
 ## Users (MVP)
 | Metod | Path | Beskrivning |
 |-------|------|-------------|
-| GET | /api/users | Lista användare |
+| POST | /api/auth/login | Inloggning (`identifier`, `password`) |
 | GET | /api/users/{id} | En användare |
-| POST | /api/users | Skapa användare |
+| POST | /api/users | Skapa användare (med `losenord`) |
 
 ---
 

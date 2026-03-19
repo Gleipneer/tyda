@@ -7,7 +7,7 @@
 
 | Sida | Syfte | Data |
 |------|------|------|
-| Start | Välj eller skapa aktiv användare | GET /api/users, POST /api/users |
+| Start | Logga in eller skapa konto | POST /api/auth/login, POST /api/users |
 | Mitt rum | Privat översikt för aktiv användare | GET /api/posts |
 | Utforska | Publika poster | GET /api/posts/public, GET /api/categories |
 | Mina poster | Lista den aktiva användarens poster | GET /api/posts |

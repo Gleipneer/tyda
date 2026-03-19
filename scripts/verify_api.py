@@ -43,12 +43,22 @@ def main():
     else:
         errors.append(f"GET /api/db-health: {code} {data} (DB may need password in .env)")
 
-    # Users
-    code, data = req("GET", "/users")
-    if code == 200 and isinstance(data, list):
-        ok.append("GET /api/users")
+    # Auth (inloggning)
+    code, data = req(
+        "POST",
+        "/auth/login",
+        {"identifier": "admin@tyda.local", "password": "admin"},
+    )
+    if code == 200 and isinstance(data, dict) and data.get("anvandar_id"):
+        ok.append("POST /api/auth/login")
+        uid = data["anvandar_id"]
+        code2, data2 = req("GET", f"/users/{uid}")
+        if code2 == 200 and isinstance(data2, dict):
+            ok.append("GET /api/users/{id}")
+        else:
+            errors.append(f"GET /api/users/{uid}: {code2}")
     else:
-        errors.append(f"GET /api/users: {code}")
+        errors.append(f"POST /api/auth/login: {code} (kör migration 015 / reflektionsarkiv.sql)")
 
     # Categories
     code, data = req("GET", "/categories")

@@ -1,43 +1,58 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import ContentCard from "@/components/ContentCard";
-import { createUser, fetchUsers } from "@/services/users";
+import { createUser, loginUser } from "@/services/users";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 
 export default function LandingPage() {
   const { activeUser, setActiveUser } = useActiveUser();
   const location = useLocation();
-  const { data: users = [] } = useQuery({ queryKey: ["users"], queryFn: fetchUsers });
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState<number | "">("");
-  const [mode, setMode] = useState<"create" | "existing">("create");
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const createMutation = useMutation({
-    mutationFn: createUser,
+  const [loginId, setLoginId] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regPassword2, setRegPassword2] = useState("");
+
+  const loginMutation = useMutation({
+    mutationFn: () => loginUser(loginId.trim(), loginPassword),
     onSuccess: (user) => {
       setActiveUser(user);
       setFormError(null);
     },
-    onError: (error) => {
-      setFormError((error as Error).message);
+    onError: () => {
+      setFormError("Fel e-post/användarnamn eller lösenord.");
     },
   });
 
-  const selectedUser = useMemo(
-    () => users.find((user) => user.anvandar_id === selectedUserId) ?? null,
-    [users, selectedUserId]
-  );
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createUser({
+        anvandarnamn: name.trim(),
+        epost: email.trim(),
+        losenord: regPassword,
+      }),
+    onSuccess: (user) => {
+      setActiveUser(user);
+      setFormError(null);
+    },
+    onError: (error: Error) => {
+      setFormError(error.message || "Kunde inte skapa konto.");
+    },
+  });
+
   const sessionChanged = new URLSearchParams(location.search).get("session") === "switch";
 
   useEffect(() => {
     const requestedMode = new URLSearchParams(location.search).get("mode");
-    if (requestedMode === "create" || requestedMode === "existing") {
-      setMode(requestedMode);
-    }
+    if (requestedMode === "register") setMode("register");
+    if (requestedMode === "login") setMode("login");
   }, [location.search]);
 
   useEffect(() => {
@@ -52,13 +67,32 @@ export default function LandingPage() {
     return <Navigate to="/mitt-rum" replace />;
   }
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginId.trim() || !loginPassword) {
+      setFormError("Fyll i båda fälten.");
+      return;
+    }
+    setFormError(null);
+    loginMutation.mutate();
+  };
+
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
       setFormError("Fyll i namn och e-post.");
       return;
     }
-    createMutation.mutate({ anvandarnamn: name.trim(), epost: email.trim() });
+    if (regPassword.length < 8) {
+      setFormError("Lösenord måste vara minst 8 tecken.");
+      return;
+    }
+    if (regPassword !== regPassword2) {
+      setFormError("Lösenorden matchar inte.");
+      return;
+    }
+    setFormError(null);
+    createMutation.mutate();
   };
 
   return (
@@ -70,7 +104,7 @@ export default function LandingPage() {
               {sessionChanged && (
                 <div className="rounded-2xl border border-primary/20 bg-accent/70 px-4 py-2.5">
                   <p className="text-sm font-body leading-relaxed text-accent-foreground">
-                    Du är utloggad. Välj en användare eller skapa en ny för att komma vidare.
+                    Du är utloggad. Logga in igen för att komma vidare.
                   </p>
                 </div>
               )}
@@ -79,33 +113,72 @@ export default function LandingPage() {
                 <h2 className="mt-1.5 text-2xl font-display font-semibold text-foreground">Kom in i Tyda</h2>
               </div>
               <p className="text-sm font-body leading-relaxed text-muted-foreground">
-                Skapa eller välj en lokal användare på den här enheten.
+                Logga in med e-post och lösenord. Administratör kan skriva <span className="font-mono">admin</span>{" "}
+                som användarnamn.
               </p>
             </div>
 
             <div className="mb-4 inline-flex rounded-full bg-muted p-1">
               <button
                 type="button"
-                onClick={() => setMode("create")}
+                onClick={() => setMode("login")}
                 className={`rounded-full px-4 py-2 text-sm font-body transition-colors ${
-                  mode === "create" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  mode === "login" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                 }`}
               >
-                Skapa användare
+                Logga in
               </button>
               <button
                 type="button"
-                onClick={() => setMode("existing")}
+                onClick={() => setMode("register")}
                 className={`rounded-full px-4 py-2 text-sm font-body transition-colors ${
-                  mode === "existing" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  mode === "register" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                 }`}
               >
-                Jag har redan en användare
+                Skapa konto
               </button>
             </div>
 
-            {mode === "create" ? (
-              <form onSubmit={handleCreate} className="space-y-3.5">
+            {mode === "login" ? (
+              <form onSubmit={handleLogin} className="space-y-3.5">
+                <div>
+                  <label className="block text-sm font-body font-medium text-foreground mb-1.5">
+                    E-post eller användarnamn
+                  </label>
+                  <input
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value)}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-body"
+                    placeholder="emilssonjoakim@gmail.com eller admin"
+                    type="text"
+                    autoComplete="username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-body font-medium text-foreground mb-1.5">Lösenord</label>
+                  <input
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-body"
+                    type="password"
+                    autoComplete="current-password"
+                  />
+                </div>
+                {formError && <p className="text-sm text-destructive">{formError}</p>}
+                <button
+                  type="submit"
+                  disabled={loginMutation.isPending}
+                  className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-body font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
+                >
+                  {loginMutation.isPending ? "Loggar in..." : "Logga in"}
+                </button>
+                <p className="text-xs text-muted-foreground font-body leading-relaxed">
+                  Demo-konton och lösenord (endast utveckling): se{" "}
+                  <code className="rounded bg-muted px-1">docs/INLOGGNING_DEMO.md</code> i repot.
+                </p>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-3.5">
                 <div>
                   <label className="block text-sm font-body font-medium text-foreground mb-1.5">Namn</label>
                   <input
@@ -123,6 +196,30 @@ export default function LandingPage() {
                     className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-body"
                     placeholder="du@example.com"
                     type="email"
+                    autoComplete="email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-body font-medium text-foreground mb-1.5">Lösenord</label>
+                  <input
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-body"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-body font-medium text-foreground mb-1.5">
+                    Upprepa lösenord
+                  </label>
+                  <input
+                    value={regPassword2}
+                    onChange={(e) => setRegPassword2(e.target.value)}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-body"
+                    type="password"
+                    autoComplete="new-password"
                   />
                 </div>
                 {formError && <p className="text-sm text-destructive">{formError}</p>}
@@ -131,35 +228,9 @@ export default function LandingPage() {
                   disabled={createMutation.isPending}
                   className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-body font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
                 >
-                  {createMutation.isPending ? "Skapar..." : "Öppna mitt rum"}
+                  {createMutation.isPending ? "Skapar konto..." : "Skapa konto och öppna mitt rum"}
                 </button>
               </form>
-            ) : (
-              <div className="space-y-3.5">
-                <div>
-                  <label className="block text-sm font-body font-medium text-foreground mb-1.5">Välj användare</label>
-                  <select
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-body"
-                  >
-                    <option value="">Välj användare</option>
-                    {users.map((user) => (
-                      <option key={user.anvandar_id} value={user.anvandar_id}>
-                        {user.anvandarnamn} - {user.epost}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  disabled={!selectedUser}
-                  onClick={() => selectedUser && setActiveUser(selectedUser)}
-                  className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-body font-medium text-foreground hover:bg-muted/70 disabled:opacity-50"
-                >
-                  Fortsätt till mitt rum
-                </button>
-              </div>
             )}
           </ContentCard>
         </section>

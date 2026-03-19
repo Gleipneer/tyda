@@ -31,25 +31,28 @@ Snabb kontroll:
 - `Analys`: enkel sammanställning per kategori och begrepp
 - `Om Tyda`: produkt- och databasförklaring
 
-## 3. Välj användare och lämna aktiv användare
+## 3. Logga in, skapa konto och logga ut
 
 På startsidan kan du:
 
-- skapa en ny lokal användare
-- välja en befintlig användare
+- **Logga in** med e-post (eller skriv `admin` som administratör) och lösenord
+- **Skapa konto** med namn, e-post och lösenord (minst 8 tecken)
 
-När en användare är vald skickas du vidare till `Mitt rum`.
+Demo-konton och lösenord för utveckling: se `docs/INLOGGNING_DEMO.md` i repot.
 
-För att lämna aktiv användare:
+När inloggning lyckas skickas du till `Mitt rum`.
 
-- desktop: klicka `Byt användare` i headern
-- mobil/smal vy: öppna menyn och klicka `Byt användare`
-- efter utloggning hamnar du på startsidan igen
+För att logga ut:
+
+- desktop: klicka `Logga ut` i headern
+- mobil/smal vy: öppna menyn och klicka `Logga ut`
+- du hamnar på startsidan igen
 
 Viktigt:
 
-- aktiv användare sparas lokalt i webbläsaren
-- användarbyte rensar den aktiva profilen i webbläsaren, inte databasen
+- inloggning verifieras mot databasen (`POST /api/auth/login`); lösenord lagras som bcrypt-hash
+- aktiv användarprofil sparas lokalt i webbläsaren (utan server-side sessionstoken i denna version)
+- API-anrop för att skapa poster skickar fortfarande `anvandar_id` från klienten – i produktion skulle det kopplas till en riktig session
 
 ## 4. Skrivflödet
 

@@ -97,9 +97,26 @@ def main():
             "012_drop_idx_postbegrepp_post.sql",
             "013_synlighet_privat_publik.sql",
             "014_add_check_titel.sql",
+            "015_add_auth_columns.sql",
         ]:
             path = os.path.join(migrations_dir, name)
             if os.path.exists(path):
+                if name == "015_add_auth_columns.sql":
+                    cur = conn.cursor()
+                    cur.execute(
+                        """
+                        SELECT COUNT(*) FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                          AND LOWER(TABLE_NAME) = 'anvandare'
+                          AND COLUMN_NAME = 'LosenordHash'
+                        """
+                    )
+                    if cur.fetchone()[0] > 0:
+                        print("Kör", name, "...")
+                        print("  Hoppar över (kolumnen finns redan, t.ex. från reflektionsarkiv.sql)")
+                        cur.close()
+                        continue
+                    cur.close()
                 print("Kör", name, "...")
                 run_migration_file(conn, path)
                 print("  OK")

@@ -6,8 +6,8 @@ import { Database, ArrowRight, Layers, Zap } from "lucide-react";
 const tables = [
   {
     name: "Anvandare",
-    description: "Här finns användarna som kan skapa poster i systemet.",
-    fields: "AnvandarID, Anvandarnamn, Epost, SkapadDatum",
+    description: "Användarkonton. Lösenord lagras som bcrypt-hash i LosenordHash; ArAdmin markerar administratör.",
+    fields: "AnvandarID, Anvandarnamn, Epost, LosenordHash, ArAdmin, SkapadDatum",
   },
   {
     name: "Kategorier",
@@ -176,7 +176,7 @@ export default function AboutDatabasePage() {
             Databasen är medvetet liten: 6 tabeller, 1 trigger och 1 lagrad procedur. Tyngre matchning och AI-logik ligger i backend, inte i schemat.
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            ER-diagrammet visar tabellerna och relationerna. Kolumner och typer står under &quot;Tabeller&quot; nedan. `PostBegrepp` är den verkliga många-till-många-tabellen; automatisk begreppsmatchning räknas i backend och sparas inte där.
+            ER-diagrammet visar tabeller, kolumner och relationer. Mer beskrivning per tabell finns under &quot;Tabeller&quot;. `PostBegrepp` är den verkliga många-till-många-tabellen; automatisk begreppsmatchning räknas i backend och sparas inte där.
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
             `AktivitetLogg` är idag en enkel skapelselogg för poster, inte en full auditlogg över allt som händer i systemet.
@@ -188,39 +188,48 @@ export default function AboutDatabasePage() {
         <ContentCard>
           <h2 className="text-lg font-display font-semibold text-foreground mb-3">ER-diagram</h2>
           <div className="overflow-x-auto">
-            <div className="min-w-[560px]">
-              <svg viewBox="0 0 840 360" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
-                {/* Workbench-liknande: bara tabellnamn i rutor (kolumner finns under Tabeller nedan) */}
-                <g className="stroke-primary">
-                  <rect x="24" y="40" width="176" height="44" rx="8" className="fill-accent" strokeWidth="1.5" />
-                  <text x="112" y="68" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>Anvandare</text>
+            <div className="min-w-[640px]">
+              <svg viewBox="0 0 840 448" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                <rect x="24" y="32" width="180" height="90" rx="10" className="fill-accent stroke-primary" strokeWidth="1.5" />
+                <text x="114" y="56" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>Anvandare</text>
+                <text x="114" y="76" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>AnvandarID, Anvandarnamn, Epost,</text>
+                <text x="114" y="90" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>LosenordHash, ArAdmin,</text>
+                <text x="114" y="104" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>SkapadDatum</text>
 
-                  <rect x="24" y="132" width="176" height="44" rx="8" className="fill-accent" strokeWidth="1.5" />
-                  <text x="112" y="160" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>Kategorier</text>
+                <rect x="24" y="182" width="180" height="70" rx="10" className="fill-accent stroke-primary" strokeWidth="1.5" />
+                <text x="114" y="197" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>Kategorier</text>
+                <text x="114" y="219" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>KategoriID, Namn, Beskrivning</text>
 
-                  <rect x="302" y="72" width="220" height="48" rx="8" className="fill-sage-light" strokeWidth="2" />
-                  <text x="412" y="102" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "15px", fontWeight: 600 }}>Poster</text>
+                <rect x="302" y="88" width="220" height="108" rx="10" className="fill-sage-light stroke-primary" strokeWidth="2" />
+                <text x="412" y="114" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "15px", fontWeight: 600 }}>Poster</text>
+                <text x="412" y="134" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>PostID, AnvandarID, KategoriID,</text>
+                <text x="412" y="148" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>Titel VARCHAR(150), Innehall,</text>
+                <text x="412" y="162" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>Synlighet ENUM(&apos;privat&apos;,&apos;publik&apos;),</text>
+                <text x="412" y="176" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>SkapadDatum</text>
 
-                  <rect x="622" y="40" width="176" height="44" rx="8" className="fill-accent" strokeWidth="1.5" />
-                  <text x="710" y="68" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>Begrepp</text>
+                <rect x="618" y="32" width="190" height="78" rx="10" className="fill-accent stroke-primary" strokeWidth="1.5" />
+                <text x="713" y="58" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>Begrepp</text>
+                <text x="713" y="80" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>BegreppID, Ord, Beskrivning,</text>
+                <text x="713" y="94" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>SkapadDatum</text>
 
-                  <rect x="582" y="188" width="220" height="44" rx="8" className="fill-warm stroke-warm-dark" strokeWidth="1.5" />
-                  <text x="692" y="216" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>PostBegrepp</text>
+                <rect x="578" y="206" width="230" height="76" rx="10" className="fill-warm stroke-warm-dark" strokeWidth="1.5" />
+                <text x="693" y="232" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>PostBegrepp</text>
+                <text x="693" y="252" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>PostBegreppID, PostID, BegreppID</text>
+                <text x="693" y="266" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "9px" }}>UNIQUE (PostID, BegreppID)</text>
 
-                  <rect x="302" y="268" width="220" height="44" rx="8" className="fill-accent" strokeWidth="1.5" />
-                  <text x="412" y="296" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>AktivitetLogg</text>
-                </g>
+                <rect x="302" y="318" width="220" height="84" rx="10" className="fill-accent stroke-primary" strokeWidth="1.5" />
+                <text x="412" y="346" textAnchor="middle" className="fill-foreground" style={{ fontFamily: "'Playfair Display', serif", fontSize: "14px", fontWeight: 600 }}>AktivitetLogg</text>
+                <text x="412" y="368" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>LoggID, PostID, AnvandarID,</text>
+                <text x="412" y="382" textAnchor="middle" className="fill-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px" }}>Handelse, Tidpunkt</text>
 
-                {/* 1:N heldragen: FK i schemat */}
-                <line x1="200" y1="62" x2="302" y2="96" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
-                <line x1="200" y1="154" x2="302" y2="104" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
-                <line x1="522" y1="96" x2="582" y2="210" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
-                <line x1="710" y1="84" x2="692" y2="188" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
+                <line x1="204" y1="77" x2="302" y2="124" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
+                <line x1="204" y1="217" x2="302" y2="156" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
+                <line x1="522" y1="170" x2="578" y2="230" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
+                <line x1="713" y1="110" x2="693" y2="206" className="stroke-primary" strokeWidth="1.5" markerEnd="url(#er-arrow)" />
 
-                {/* Streckat = loggsemantik (FK PostID/AnvandarID finns i SQL; kategori→logg bara logisk) */}
-                <line x1="412" y1="120" x2="412" y2="268" className="stroke-primary" strokeWidth="1.5" strokeDasharray="6 4" markerEnd="url(#er-arrow)" />
+                <line x1="412" y1="196" x2="412" y2="318" className="stroke-primary" strokeWidth="1.5" strokeDasharray="6 4" markerEnd="url(#er-arrow)" />
                 <path
-                  d="M 112 84 L 112 248 L 302 248 L 302 268"
+                  d="M 114 122 L 114 288 L 302 288 L 302 318"
                   fill="none"
                   className="stroke-primary"
                   strokeWidth="1.5"
@@ -228,7 +237,7 @@ export default function AboutDatabasePage() {
                   markerEnd="url(#er-arrow)"
                 />
                 <path
-                  d="M 112 176 L 112 258 L 302 258 L 302 268"
+                  d="M 114 252 L 114 302 L 302 302 L 302 318"
                   fill="none"
                   className="stroke-primary"
                   strokeWidth="1.5"
@@ -243,18 +252,6 @@ export default function AboutDatabasePage() {
                 </defs>
               </svg>
             </div>
-          </div>
-          <div className="mt-3 space-y-2 text-xs text-muted-foreground font-body leading-relaxed">
-            <p>
-              <strong className="text-foreground/90">Heldragen linje</strong> = 1:N med främmande nyckel i <span className="font-mono">reflektionsarkiv.sql</span> (t.ex. Poster→Anvandare/Kategorier, PostBegrepp→Poster/Begrepp).
-            </p>
-            <p>
-              <strong className="text-foreground/90">Streckad linje till AktivitetLogg</strong> = samma 1:N som i SQL finns som FK på <span className="font-mono">PostID</span> och <span className="font-mono">AnvandarID</span>, men vi ritar streckat för att markera <em>loggtabell</em> där nya rader normalt sätts in av triggern <span className="font-mono">trigga_ny_post_logg</span>. Linjen från <span className="font-mono">Kategorier</span> är <em>inte</em> en egen FK — kategori når loggen bara genom posten.
-            </p>
-            <p>`Poster.Synlighet` har databasvärdena `privat`, `publik`.</p>
-            <p>
-              När en post tas bort rensas rader i <span className="font-mono">PostBegrepp</span> och <span className="font-mono">AktivitetLogg</span> via <span className="font-mono">ON DELETE CASCADE</span> i SQL — inte bara något appkoden råkar göra.
-            </p>
           </div>
         </ContentCard>
 

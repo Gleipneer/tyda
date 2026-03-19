@@ -2,10 +2,14 @@ import { test, expect } from "@playwright/test";
 
 async function openNewPostAsNewUser(page: import("@playwright/test").Page) {
   const stamp = Date.now();
+  const pwd = `Rt${stamp}Rt9`;
   await page.goto("/", { waitUntil: "load", timeout: 15000 });
-  await page.locator("input").nth(0).fill(`Runtime ${stamp}`);
-  await page.locator("input").nth(1).fill(`runtime.${stamp}@example.com`);
-  await page.getByRole("button", { name: /öppna mitt rum/i }).click();
+  await page.getByRole("button", { name: /^skapa konto$/i }).click();
+  await page.getByPlaceholder("Ditt namn").fill(`Runtime ${stamp}`);
+  await page.getByPlaceholder("du@example.com").fill(`runtime.${stamp}@example.com`);
+  await page.locator('input[type="password"]').nth(0).fill(pwd);
+  await page.locator('input[type="password"]').nth(1).fill(pwd);
+  await page.getByRole("button", { name: /skapa konto och öppna mitt rum/i }).click();
   await expect(page).toHaveURL(/\/mitt-rum/, { timeout: 15000 });
   await page.goto("/new-post", { waitUntil: "load", timeout: 15000 });
   await expect(page.getByRole("heading", { name: /ny post/i })).toBeVisible({ timeout: 15000 });
@@ -84,10 +88,10 @@ test.describe("NewPostPage runtime verification", () => {
 
     await page.getByRole("button", { name: /öppna meny/i }).click();
     const reopenedDrawer = page.getByRole("dialog", { name: /navigering/i });
-    await expect(reopenedDrawer.getByRole("button", { name: /byt användare/i })).toBeVisible();
-    await reopenedDrawer.getByRole("button", { name: /byt användare/i }).click();
+    await expect(reopenedDrawer.getByRole("button", { name: /logga ut/i })).toBeVisible();
+    await reopenedDrawer.getByRole("button", { name: /logga ut/i }).click();
 
-    await expect(page).toHaveURL(/\/\?mode=existing&session=switch#kom-igang$/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/\?mode=login&session=switch#kom-igang$/, { timeout: 10000 });
     await expect(page.getByRole("heading", { name: /kom in i tyda/i })).toBeVisible();
   });
 
@@ -131,7 +135,7 @@ test.describe("NewPostPage runtime verification", () => {
     await expect(page.getByRole("link", { name: /ny post/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /utforska/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /konto/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /logga ut och välj användare/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /logga ut/i }).first()).toBeVisible();
 
     const runbookLink = page.getByRole("link", { name: /runbook/i }).first();
     await expect(runbookLink).toBeVisible();
@@ -143,6 +147,6 @@ test.describe("NewPostPage runtime verification", () => {
     await expect(page.getByRole("heading", { name: /om tyda/i })).toBeVisible();
     await expect(page.getByText(/6 tabeller, 1 trigger och 1 lagrad procedur/i)).toBeVisible();
     await expect(page.getByText(/inte en full historik över alla ändringar/i)).toBeVisible();
-    await expect(page.getByText(/rensas när en post tas bort/i)).toBeVisible();
+    await expect(page.getByText(/ON DELETE CASCADE/i).first()).toBeVisible();
   });
 });

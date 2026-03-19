@@ -10,6 +10,7 @@ class UserRead(BaseModel):
     anvandarnamn: str
     epost: str
     skapad_datum: datetime
+    ar_admin: bool = False
 
 
 class UserCreate(BaseModel):
@@ -17,3 +18,4 @@ class UserCreate(BaseModel):
 
     anvandarnamn: str
     epost: str
+    losenord: str

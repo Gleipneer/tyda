@@ -160,6 +160,25 @@ def test_poster_has_check_titel():
     assert len(rows) >= 1
 
 
+def test_anvandare_has_auth_columns():
+    """Anvandare har LosenordHash och ArAdmin (migration 015 / reflektionsarkiv.sql)."""
+    rows = _fetchall(
+        """
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND LOWER(TABLE_NAME) = 'anvandare'
+        """
+    )
+    names = {r["COLUMN_NAME"].lower() for r in rows}
+    assert "losenordhash" in names, (
+        "Anvandare saknar LosenordHash (och troligen ArAdmin). "
+        "Kör från backend-mappen: python scripts/run_migration_utf8.py "
+        "eller importera om senaste reflektionsarkiv.sql."
+    )
+    assert "aradmin" in names
+
+
 def test_trigger_and_procedure_still_exist():
     triggers = _fetchall(
         """

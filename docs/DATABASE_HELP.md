@@ -13,7 +13,7 @@ En liten relationsdatabas för att spara drömmar, tankar och reflektioner. Den 
 
 ## Tabell för tabell
 
-**Anvandare** – Vem som skriver. Namn, e-post.
+**Anvandare** – Vem som skriver. Namn, e-post, **LosenordHash** (bcrypt), **ArAdmin** (0/1). Inloggning i appen verifierar mot hash; se `docs/INLOGGNING_DEMO.md`.
 
 **Kategorier** – Typ av post: dröm, vision, tanke, reflektion, dikt.
 

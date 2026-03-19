@@ -4,12 +4,14 @@ export interface User {
   anvandar_id: number;
   anvandarnamn: string;
   epost: string;
+  skapad_datum?: string;
+  ar_admin?: boolean;
 }
 
-export function fetchUsers(): Promise<User[]> {
-  return get<User[]>("/users");
+export function loginUser(identifier: string, password: string): Promise<User> {
+  return post<User>("/auth/login", { identifier, password });
 }
 
-export function createUser(data: { anvandarnamn: string; epost: string }): Promise<User> {
+export function createUser(data: { anvandarnamn: string; epost: string; losenord: string }): Promise<User> {
   return post<User>("/users", data);
 }

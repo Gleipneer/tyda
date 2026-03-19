@@ -1,9 +1,20 @@
 const API_BASE = "/api";
 
+function detailToMessage(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const first = detail[0] as { msg?: string } | undefined;
+    return first?.msg ?? JSON.stringify(detail);
+  }
+  return "Begäran misslyckades";
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error((err as { detail?: string }).detail || (err as { error?: string }).error || res.statusText);
+    const body = err as { detail?: unknown; error?: string };
+    const msg = body.detail != null ? detailToMessage(body.detail) : body.error || res.statusText;
+    throw new Error(msg);
   }
   return res.json() as Promise<T>;
 }
