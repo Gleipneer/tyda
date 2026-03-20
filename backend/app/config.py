@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 24
 
+    # Sannings-/utvecklingssökning: POST /api/analyze/match-trace (aldrig i produktion utan behov)
+    TYDA_MATCH_DEBUG: bool = False
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -183,6 +183,22 @@ VARIANT_TO_BASE: dict[str, str] = {
     "gryningen": "gryning",
     "skymningen": "skymning",
     "vinden": "vind", "vindar": "vind",
+    # Profetisk / symbolisk material- och kroppsbild (t.ex. metallsekvens, fötter, staty)
+    "fötter": "fot",
+    "fötterna": "fot",
+    "fotterna": "fot",
+    "fötternas": "fot",
+    "silvret": "silver",
+    "silvrets": "silver",
+    "leran": "lera",
+    "lerans": "lera",
+    "statyn": "staty",
+    "statyer": "staty",
+    "statyns": "staty",
+    "huvudet": "huvud",
+    "huvudena": "huvud",
+    "bronset": "brons",
+    "bronsets": "brons",
     "isen": "is", "isar": "is",
     "stjärnorna": "stjärna", "stjärnor": "stjärna",
     "molnen": "moln", "moln": "moln",
@@ -472,3 +488,35 @@ def find_matches(
     result = [info for _, info in seen.values()]
     result.sort(key=lambda x: (-x["score"], x["ord"]))
     return result
+
+
+def build_match_trace(text: str, concepts: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    Deterministisk felsökningspayload: token, kandidatgrundformer, slutliga träffar.
+    Används i tester och valfritt API när TYDA_MATCH_DEBUG=true.
+    """
+    lexicon_keys = {normalize_for_match(c["Ord"]) for c in concepts}
+    tokens = tokenize(text)
+    per_token: list[dict[str, Any]] = []
+    for t in tokens:
+        candidates: list[dict[str, Any]] = []
+        for base_form, match_type in reduce_to_base(t):
+            key = normalize_for_match(base_form)
+            candidates.append(
+                {
+                    "base_form": base_form,
+                    "match_type": match_type,
+                    "normalized_key": key,
+                    "hits_lexicon": key in lexicon_keys,
+                }
+            )
+        per_token.append({"token": t, "candidates": candidates})
+    matches = find_matches(text, concepts, include_phrases=True)
+    return {
+        "token_count": len(tokens),
+        "tokens": tokens,
+        "lexicon_size": len(concepts),
+        "match_count": len(matches),
+        "matches": matches,
+        "per_token": per_token,
+    }

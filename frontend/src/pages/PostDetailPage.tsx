@@ -7,7 +7,7 @@ import ContentCard from "@/components/ContentCard";
 import ConceptBadge from "@/components/ConceptBadge";
 import { Sparkles, BookOpen, Brain, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { deletePost, fetchPost, fetchPublicPost } from "@/services/posts";
-import { fetchPostConcepts, fetchMatchedConcepts, unlinkConcept } from "@/services/concepts";
+import { fetchConcepts, fetchPostConcepts, fetchMatchedConcepts, unlinkConcept } from "@/services/concepts";
 import { fetchInterpretStatus, interpretPost } from "@/services/interpret";
 import type { InterpretKind, InterpretModelOption, InterpretResponse } from "@/services/interpret";
 import { matchTypeLabel } from "@/lib/matchTypeLabels";
@@ -55,6 +55,12 @@ export default function PostDetailPage() {
   const { data: interpretStatus } = useQuery({
     queryKey: ["interpret-status"],
     queryFn: fetchInterpretStatus,
+  });
+
+  const { data: globalLexicon = [] } = useQuery({
+    queryKey: ["lexicon-all"],
+    queryFn: fetchConcepts,
+    staleTime: 5 * 60 * 1000,
   });
   const orderedMatches = useMemo(
     () => [...matchedList].sort((a, b) => b.score - a.score),
@@ -267,8 +273,12 @@ export default function PostDetailPage() {
                 <div className="space-y-2 text-sm text-muted-foreground font-body leading-relaxed">
                   <p>Inga begrepp hittades automatiskt i texten.</p>
                   <p className="text-xs">
-                    Träffar kommer bara från ord som finns i lexikonet (<code className="rounded bg-muted px-1">Begrepp</code> i databasen). Basfilen har bara några få ord — kör migrationerna under{" "}
-                    <code className="rounded bg-muted px-1">database/migrations</code> (se README) så lexikonet fylls med t.ex. berg, sten, guld m.m.
+                    Träffar kommer bara från ord som finns i lexikonet (<code className="rounded bg-muted px-1">Begrepp</code> i databasen).
+                    {globalLexicon.length > 0 && globalLexicon.length < 40 && (
+                      <> Just nu laddade appen <strong>{globalLexicon.length}</strong> begrepp — det tyder på att migrationerna inte körts fullt ut. </>
+                    )}
+                    Kör migrationerna under{" "}
+                    <code className="rounded bg-muted px-1">database/migrations</code> (se README) så lexikonet fylls med t.ex. berg, sten, guld, brons, järn m.m.
                   </p>
                 </div>
               )}

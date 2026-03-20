@@ -35,6 +35,7 @@ MIGRATIONS: tuple[str, ...] = (
     "014_add_check_titel.sql",
     "015_add_auth_columns.sql",
     "016_add_poster_update_trigger.sql",
+    "017_metall_kropp_daniel.sql",
 )
 
 # Minsta antal rader i Begrepp för att anta att lexikon redan är migrerat (äldre installation utan spårning)

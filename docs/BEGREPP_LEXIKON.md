@@ -4,7 +4,7 @@
 
 **Viktigt:** Dessa är tolkningsramar (klassisk tradition, jungianskt perspektiv, allmän symbolik), inte objektiva sanningar. Källhierarki: Artemidoros Oneirocritica, Jungiansk symbolpsykologi, etablerad symboltradition.
 
-**Senast uppdaterad:** 2025-03-15 (migration 006_lexicon_extended)
+**Senast uppdaterad:** 2025-03-15 (migration 017_metall_kropp_daniel + tidigare lexikonmigrationer; se även `BEGREPP_DETEKTION_ROOT_CAUSE.md`)
 
 ---
 
