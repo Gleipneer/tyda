@@ -6,7 +6,7 @@ from app.routers import admin_database_queries
 def test_database_queries_whitelist_nonempty_and_unique_ids():
     ids = [q["id"] for q in admin_database_queries._PREDEFINED_DATABASE_QUERIES]
     assert len(ids) == len(set(ids))
-    assert len(ids) >= 10
+    assert len(ids) >= 12
 
 
 def test_database_queries_cover_sql_principles():

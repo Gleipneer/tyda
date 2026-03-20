@@ -16,7 +16,14 @@ function normalizeApiBase(raw: string | undefined): string {
   return trimmed;
 }
 
-const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE);
+/** Aldrig tom sträng — tom bas skulle ge fel URL (404 från Vite istället för API). */
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE) || "/api";
+
+function joinApiUrl(path: string): string {
+  const base = API_BASE.replace(/\/$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${p}`;
+}
 
 /** Synkas med ActiveUserContext – använd setAccessToken/clearAccessToken därifrån. */
 export const ACCESS_TOKEN_KEY = "tyda.accessToken";
@@ -79,12 +86,12 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 export async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: { ...authHeaders() } });
+  const res = await fetch(joinApiUrl(path), { headers: { ...authHeaders() } });
   return handleResponse<T>(res);
 }
 
 export async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(joinApiUrl(path), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
@@ -93,7 +100,7 @@ export async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function put<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(joinApiUrl(path), {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
@@ -102,6 +109,6 @@ export async function put<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function del<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE", headers: { ...authHeaders() } });
+  const res = await fetch(joinApiUrl(path), { method: "DELETE", headers: { ...authHeaders() } });
   return handleResponse<T>(res);
 }

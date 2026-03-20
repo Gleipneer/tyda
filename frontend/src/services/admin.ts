@@ -63,10 +63,27 @@ export interface DatabaseQueryRunResult {
   kind: "select" | "call";
 }
 
-export function fetchDatabaseQueryCatalog(): Promise<DatabaseQueryCatalogItem[]> {
-  return get<DatabaseQueryCatalogItem[]>("/admin/database-queries");
+export async function fetchDatabaseQueryCatalog(): Promise<DatabaseQueryCatalogItem[]> {
+  try {
+    return await get<DatabaseQueryCatalogItem[]>("/admin/database-queries");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("Not Found") || msg.includes("404")) {
+      return get<DatabaseQueryCatalogItem[]>("/admin/vg-queries");
+    }
+    throw e;
+  }
 }
 
-export function runDatabaseQuery(queryId: string): Promise<DatabaseQueryRunResult> {
-  return post<DatabaseQueryRunResult>(`/admin/database-queries/${encodeURIComponent(queryId)}/run`, {});
+export async function runDatabaseQuery(queryId: string): Promise<DatabaseQueryRunResult> {
+  const id = encodeURIComponent(queryId);
+  try {
+    return await post<DatabaseQueryRunResult>(`/admin/database-queries/${id}/run`, {});
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("Not Found") || msg.includes("404")) {
+      return post<DatabaseQueryRunResult>(`/admin/vg-queries/${id}/run`, {});
+    }
+    throw e;
+  }
 }

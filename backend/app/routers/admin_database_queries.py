@@ -209,6 +209,20 @@ ORDER BY Kopplingar DESC
         "kind": "select",
     },
     {
+        "id": "join-aktivitet-poster",
+        "title": "INNER JOIN — aktivitetslogg med post",
+        "description": "Kopplar AktivitetLogg till Poster (Handelse, Tidpunkt, titel).",
+        "principle": "INNER JOIN (AktivitetLogg)",
+        "sql": """
+SELECT a.LoggID, a.Handelse, a.Tidpunkt, p.Titel
+FROM AktivitetLogg a
+INNER JOIN Poster p ON a.PostID = p.PostID
+ORDER BY a.Tidpunkt DESC
+LIMIT 40
+""".strip(),
+        "kind": "select",
+    },
+    {
         "id": "proc-hamta-poster-per-kategori",
         "title": "Lagrad procedur — hamta_poster_per_kategori",
         "description": "Anropar proceduren från reflektionsarkiv.sql med ett fast datumintervall (samma idé som i SQL-filen).",
@@ -226,9 +240,7 @@ def _get_query_or_404(query_id: str) -> dict[str, Any]:
     raise HTTPException(status_code=404, detail="Okänd query-id")
 
 
-@router.get("/admin/database-queries", response_model=list[DatabaseQueryCatalogItem])
-def list_database_queries():
-    """Lista alla fördefinierade frågor (metadata + SQL-text)."""
+def _catalog_items() -> list[DatabaseQueryCatalogItem]:
     return [
         DatabaseQueryCatalogItem(
             id=q["id"],
@@ -241,9 +253,7 @@ def list_database_queries():
     ]
 
 
-@router.post("/admin/database-queries/{query_id}/run", response_model=DatabaseQueryRunResponse)
-def run_database_query(query_id: str):
-    """Kör en whitelistad read-only fråga och returnerar kolumner + rader."""
+def _execute_whitelisted_query(query_id: str) -> DatabaseQueryRunResponse:
     q = _get_query_or_404(query_id)
     sql = q["sql"]
     kind = q["kind"]
@@ -268,3 +278,27 @@ def run_database_query(query_id: str):
         row_count=len(rows),
         kind=kind,  # type: ignore[arg-type]
     )
+
+
+@router.get("/admin/database-queries", response_model=list[DatabaseQueryCatalogItem])
+def list_database_queries():
+    """Lista alla fördefinierade frågor (metadata + SQL-text)."""
+    return _catalog_items()
+
+
+@router.get("/admin/vg-queries", response_model=list[DatabaseQueryCatalogItem], include_in_schema=False)
+def list_database_queries_legacy_alias():
+    """Bakåtkompatibel sökväg (samma svar som /admin/database-queries)."""
+    return _catalog_items()
+
+
+@router.post("/admin/database-queries/{query_id}/run", response_model=DatabaseQueryRunResponse)
+def run_database_query(query_id: str):
+    """Kör en whitelistad read-only fråga och returnerar kolumner + rader."""
+    return _execute_whitelisted_query(query_id)
+
+
+@router.post("/admin/vg-queries/{query_id}/run", response_model=DatabaseQueryRunResponse, include_in_schema=False)
+def run_database_query_legacy_alias(query_id: str):
+    """Bakåtkompatibel sökväg."""
+    return _execute_whitelisted_query(query_id)
