@@ -36,198 +36,315 @@ def _rows_to_jsonable(rows: list[dict[str, Any]]) -> tuple[list[str], list[dict[
     return columns, out
 
 
+def _fetch_call_rows(cursor: Any, sql: str) -> list[dict[str, Any]]:
+    """
+    MySQL CALL kan lämna kvar extra result sets/statuspaket.
+    De måste konsumeras innan connection commit/rollback i get_cursor().
+    """
+    cursor.execute(sql)
+    rows = cursor.fetchall() or []
+    while True:
+        try:
+            has_next = cursor.nextset()
+        except Exception:
+            break
+        if not has_next:
+            break
+        try:
+            cursor.fetchall()
+        except Exception:
+            break
+    return rows
+
+
 # Whitelist: id -> metadata + exakt SQL (SELECT … eller CALL …)
 # Alla tabeller/kolumner följer reflektionsarkiv.sql
 _PREDEFINED_DATABASE_QUERIES: list[dict[str, Any]] = [
     {
-        "id": "where-kategori-drom",
-        "title": "WHERE — poster i kategorin «drom»",
-        "description": "Filtrerar poster på kategorinamn via koppling till Kategorier.",
-        "principle": "WHERE, INNER JOIN",
+        "id": "alla-anvandare",
+        "title": "Alla användare",
+        "description": "Visar samtliga användare med adminflagga och skapadatum.",
+        "principle": "SELECT, ORDER BY",
         "sql": """
-SELECT p.PostID, p.Titel, p.Synlighet, p.SkapadDatum
-FROM Poster p
-INNER JOIN Kategorier k ON p.KategoriID = k.KategoriID
-WHERE k.Namn = 'drom'
-ORDER BY p.SkapadDatum DESC
-LIMIT 50
+SELECT
+    AnvandarID,
+    Anvandarnamn,
+    Epost,
+    ArAdmin,
+    SkapadDatum
+FROM Anvandare
+ORDER BY SkapadDatum DESC;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "where-anvandare-min-id",
-        "title": "WHERE — poster för en befintlig användare",
-        "description": "Visar poster där AnvandarID matchar minsta id i Anvandare (ingen fri inmatning).",
-        "principle": "WHERE, underfråga",
+        "id": "alla-kategorier",
+        "title": "Alla kategorier",
+        "description": "Visar de kategorier som finns i systemet.",
+        "principle": "SELECT, ORDER BY",
         "sql": """
-SELECT p.PostID, p.Titel, p.Synlighet, p.SkapadDatum
-FROM Poster p
-WHERE p.AnvandarID = (SELECT MIN(a.AnvandarID) FROM Anvandare a)
-ORDER BY p.SkapadDatum DESC
-LIMIT 30
+SELECT
+    KategoriID,
+    Namn,
+    Beskrivning
+FROM Kategorier
+ORDER BY Namn;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "where-begrepp-orm",
-        "title": "WHERE — begreppet «orm»",
-        "description": "Hämtar en rad ur Begrepp med exakt match på Ord.",
-        "principle": "WHERE",
+        "id": "alla-begrepp",
+        "title": "Alla begrepp",
+        "description": "Visar begreppslexikonet med beskrivningar och skapadatum.",
+        "principle": "SELECT, ORDER BY",
         "sql": """
-SELECT BegreppID, Ord, Beskrivning, SkapadDatum
+SELECT
+    BegreppID,
+    Ord,
+    Beskrivning,
+    SkapadDatum
 FROM Begrepp
-WHERE Ord = 'orm'
-LIMIT 1
+ORDER BY Ord;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "order-by-senaste-poster",
-        "title": "ORDER BY — senaste poster först",
-        "description": "Sorterar poster efter SkapadDatum fallande.",
-        "principle": "ORDER BY",
+        "id": "alla-poster-senaste-forst",
+        "title": "Alla poster sorterade senaste först",
+        "description": "Visar postöversikt sorterad efter senaste datum.",
+        "principle": "SELECT, ORDER BY",
         "sql": """
-SELECT PostID, Titel, SkapadDatum
+SELECT
+    PostID,
+    AnvandarID,
+    KategoriID,
+    Titel,
+    Synlighet,
+    SkapadDatum
 FROM Poster
-ORDER BY SkapadDatum DESC
-LIMIT 20
+ORDER BY SkapadDatum DESC;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "join-poster-kategori",
-        "title": "INNER JOIN — poster med kategorinamn",
-        "description": "Kopplar Poster till Kategorier för att visa läsbar kategori.",
-        "principle": "INNER JOIN",
+        "id": "poster-med-anvandare-och-kategori",
+        "title": "Poster med användare och kategori",
+        "description": "Visar hur Poster kopplas till både Anvandare och Kategorier.",
+        "principle": "INNER JOIN, ORDER BY",
         "sql": """
-SELECT p.PostID, p.Titel, k.Namn AS KategoriNamn, p.SkapadDatum
-FROM Poster p
-INNER JOIN Kategorier k ON p.KategoriID = k.KategoriID
-ORDER BY p.SkapadDatum DESC
-LIMIT 25
+SELECT
+    Poster.PostID,
+    Poster.Titel,
+    Anvandare.Anvandarnamn,
+    Kategorier.Namn AS Kategori,
+    Poster.Synlighet,
+    Poster.SkapadDatum
+FROM Poster
+INNER JOIN Anvandare ON Poster.AnvandarID = Anvandare.AnvandarID
+INNER JOIN Kategorier ON Poster.KategoriID = Kategorier.KategoriID
+ORDER BY Poster.SkapadDatum DESC;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "join-anvandare-med-poster",
-        "title": "INNER JOIN — användare som har minst en post",
-        "description": "DISTINCT användare som faktiskt skapat poster.",
-        "principle": "INNER JOIN, DISTINCT",
+        "id": "begrepp-per-post",
+        "title": "Begrepp per post",
+        "description": "Visar många-till-många-relationen via PostBegrepp.",
+        "principle": "INNER JOIN, många-till-många",
         "sql": """
-SELECT DISTINCT a.AnvandarID, a.Anvandarnamn
-FROM Anvandare a
-INNER JOIN Poster p ON a.AnvandarID = p.AnvandarID
-ORDER BY a.Anvandarnamn
+SELECT
+    PostBegrepp.PostID,
+    Poster.Titel,
+    Begrepp.Ord
+FROM PostBegrepp
+JOIN Poster ON PostBegrepp.PostID = Poster.PostID
+JOIN Begrepp ON PostBegrepp.BegreppID = Begrepp.BegreppID
+ORDER BY PostBegrepp.PostID, Begrepp.Ord;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "join-post-begrepp",
-        "title": "INNER JOIN — begrepp kopplade till poster",
-        "description": "Visar kopplingstabellen PostBegrepp mellan Poster och Begrepp.",
-        "principle": "INNER JOIN (många-till-många via PostBegrepp)",
+        "id": "alla-anvandare-aven-utan-poster",
+        "title": "Alla användare även utan poster",
+        "description": "LEFT JOIN som visar att användare kan listas även om de saknar poster.",
+        "principle": "LEFT JOIN, ORDER BY",
         "sql": """
-SELECT p.PostID, p.Titel, b.Ord AS BegreppOrd
-FROM Poster p
-INNER JOIN PostBegrepp pb ON p.PostID = pb.PostID
-INNER JOIN Begrepp b ON pb.BegreppID = b.BegreppID
-ORDER BY p.PostID, b.Ord
-LIMIT 40
+SELECT
+    Anvandare.AnvandarID,
+    Anvandare.Anvandarnamn,
+    Poster.PostID,
+    Poster.Titel
+FROM Anvandare
+LEFT JOIN Poster ON Anvandare.AnvandarID = Poster.AnvandarID
+ORDER BY Anvandare.AnvandarID, Poster.PostID;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "left-join-anvandare-alla",
-        "title": "LEFT JOIN — alla användare med postantal",
-        "description": "Alla rader i Anvandare; poster som saknas ger 0 i antal.",
-        "principle": "LEFT JOIN, GROUP BY",
-        "sql": """
-SELECT a.AnvandarID, a.Anvandarnamn, COUNT(p.PostID) AS AntalPoster
-FROM Anvandare a
-LEFT JOIN Poster p ON a.AnvandarID = p.AnvandarID
-GROUP BY a.AnvandarID, a.Anvandarnamn
-ORDER BY a.AnvandarID
-""".strip(),
-        "kind": "select",
-    },
-    {
-        "id": "left-join-begrepp-kopplingar",
-        "title": "LEFT JOIN — begrepp och antal kopplingar",
-        "description": "Räknar PostBegrepp per begrepp; begrepp utan koppling får 0.",
+        "id": "antal-poster-per-anvandare",
+        "title": "Antal poster per användare",
+        "description": "Räknar antal poster per användare, inklusive användare utan poster.",
         "principle": "LEFT JOIN, GROUP BY, COUNT",
         "sql": """
-SELECT b.BegreppID, b.Ord, COUNT(pb.PostBegreppID) AS AntalKopplingar
-FROM Begrepp b
-LEFT JOIN PostBegrepp pb ON b.BegreppID = pb.BegreppID
-GROUP BY b.BegreppID, b.Ord
-ORDER BY AntalKopplingar DESC, b.Ord
+SELECT
+    Anvandare.AnvandarID,
+    Anvandare.Anvandarnamn,
+    COUNT(Poster.PostID) AS AntalPoster
+FROM Anvandare
+LEFT JOIN Poster ON Anvandare.AnvandarID = Poster.AnvandarID
+GROUP BY Anvandare.AnvandarID, Anvandare.Anvandarnamn
+ORDER BY AntalPoster DESC, Anvandare.Anvandarnamn;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "group-by-poster-per-anvandare",
-        "title": "GROUP BY — antal poster per användare",
-        "description": "Aggregerar poster per skapare.",
-        "principle": "GROUP BY, COUNT",
+        "id": "antal-poster-per-kategori",
+        "title": "Antal poster per kategori",
+        "description": "Visar hur många poster som finns i varje kategori.",
+        "principle": "LEFT JOIN, GROUP BY, COUNT",
         "sql": """
-SELECT a.Anvandarnamn, COUNT(p.PostID) AS AntalPoster
-FROM Anvandare a
-INNER JOIN Poster p ON a.AnvandarID = p.AnvandarID
-GROUP BY a.AnvandarID, a.Anvandarnamn
-ORDER BY AntalPoster DESC
+SELECT
+    Kategorier.KategoriID,
+    Kategorier.Namn,
+    COUNT(Poster.PostID) AS AntalPoster
+FROM Kategorier
+LEFT JOIN Poster ON Kategorier.KategoriID = Poster.KategoriID
+GROUP BY Kategorier.KategoriID, Kategorier.Namn
+ORDER BY AntalPoster DESC, Kategorier.Namn;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "having-fler-an-an-post",
-        "title": "HAVING — användare med mer än en post",
-        "description": "Filtrerar grupper efter COUNT — klassiskt HAVING-exempel.",
-        "principle": "GROUP BY, HAVING",
+        "id": "mest-anvanda-begrepp",
+        "title": "Mest använda begrepp",
+        "description": "Räknar hur många gånger varje begrepp har kopplats till en post.",
+        "principle": "LEFT JOIN, GROUP BY, COUNT",
         "sql": """
-SELECT a.Anvandarnamn, COUNT(p.PostID) AS AntalPoster
-FROM Anvandare a
-INNER JOIN Poster p ON a.AnvandarID = p.AnvandarID
-GROUP BY a.AnvandarID, a.Anvandarnamn
-HAVING COUNT(p.PostID) > 1
-ORDER BY AntalPoster DESC
+SELECT
+    Begrepp.BegreppID,
+    Begrepp.Ord,
+    COUNT(PostBegrepp.PostBegreppID) AS AntalKopplingar
+FROM Begrepp
+LEFT JOIN PostBegrepp ON Begrepp.BegreppID = PostBegrepp.BegreppID
+GROUP BY Begrepp.BegreppID, Begrepp.Ord
+ORDER BY AntalKopplingar DESC, Begrepp.Ord;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "having-begrepp-minst-tva",
-        "title": "HAVING — begrepp som kopplats minst två gånger",
-        "description": "Visar begrepp som förekommer i PostBegrepp minst två gånger.",
-        "principle": "GROUP BY, HAVING",
+        "id": "anvandare-med-fler-an-en-post",
+        "title": "Användare med fler än en post",
+        "description": "HAVING-exempel som filtrerar grupper efter COUNT.",
+        "principle": "LEFT JOIN, GROUP BY, HAVING",
         "sql": """
-SELECT b.Ord, COUNT(pb.PostBegreppID) AS Kopplingar
-FROM Begrepp b
-INNER JOIN PostBegrepp pb ON b.BegreppID = pb.BegreppID
-GROUP BY b.BegreppID, b.Ord
-HAVING COUNT(pb.PostBegreppID) >= 2
-ORDER BY Kopplingar DESC
+SELECT
+    Anvandare.AnvandarID,
+    Anvandare.Anvandarnamn,
+    COUNT(Poster.PostID) AS AntalPoster
+FROM Anvandare
+LEFT JOIN Poster ON Anvandare.AnvandarID = Poster.AnvandarID
+GROUP BY Anvandare.AnvandarID, Anvandare.Anvandarnamn
+HAVING COUNT(Poster.PostID) > 1
+ORDER BY AntalPoster DESC, Anvandare.Anvandarnamn;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "join-aktivitet-poster",
-        "title": "INNER JOIN — aktivitetslogg med post",
-        "description": "Kopplar AktivitetLogg till Poster (Handelse, Tidpunkt, titel).",
-        "principle": "INNER JOIN (AktivitetLogg)",
+        "id": "poster-med-anvandare-kategori-och-begrepp",
+        "title": "Poster med användare, kategori och begrepp",
+        "description": "Kombinerar flera tabeller och visar även poster utan kopplade begrepp.",
+        "principle": "INNER JOIN, LEFT JOIN, ORDER BY",
         "sql": """
-SELECT a.LoggID, a.Handelse, a.Tidpunkt, p.Titel
-FROM AktivitetLogg a
-INNER JOIN Poster p ON a.PostID = p.PostID
-ORDER BY a.Tidpunkt DESC
-LIMIT 40
+SELECT
+    Poster.PostID,
+    Poster.Titel,
+    Anvandare.Anvandarnamn,
+    Kategorier.Namn AS Kategori,
+    Begrepp.Ord
+FROM Poster
+INNER JOIN Anvandare ON Poster.AnvandarID = Anvandare.AnvandarID
+INNER JOIN Kategorier ON Poster.KategoriID = Kategorier.KategoriID
+LEFT JOIN PostBegrepp ON Poster.PostID = PostBegrepp.PostID
+LEFT JOIN Begrepp ON PostBegrepp.BegreppID = Begrepp.BegreppID
+ORDER BY Poster.PostID, Begrepp.Ord;
 """.strip(),
         "kind": "select",
     },
     {
-        "id": "proc-hamta-poster-per-kategori",
-        "title": "Lagrad procedur — hamta_poster_per_kategori",
-        "description": "Anropar proceduren från reflektionsarkiv.sql med ett fast datumintervall (samma idé som i SQL-filen).",
-        "principle": "CALL, GROUP BY (i proceduren)",
-        "sql": "CALL hamta_poster_per_kategori('2024-01-01', '2026-12-31')",
+        "id": "aktivitetslogg",
+        "title": "Aktivitetslogg",
+        "description": "Visar databasen aktivitetshistorik från triggerstyrd loggning.",
+        "principle": "SELECT, ORDER BY",
+        "sql": """
+SELECT
+    AktivitetLogg.LoggID,
+    AktivitetLogg.PostID,
+    AktivitetLogg.AnvandarID,
+    AktivitetLogg.Handelse,
+    AktivitetLogg.Tidpunkt
+FROM AktivitetLogg
+ORDER BY AktivitetLogg.Tidpunkt DESC;
+""".strip(),
+        "kind": "select",
+    },
+    {
+        "id": "poster-utan-kopplade-begrepp",
+        "title": "Poster utan kopplade begrepp",
+        "description": "WHERE + LEFT JOIN för att hitta poster som ännu saknar rad i PostBegrepp.",
+        "principle": "LEFT JOIN, WHERE, ORDER BY",
+        "sql": """
+SELECT
+    Poster.PostID,
+    Poster.Titel,
+    Poster.Synlighet,
+    Poster.SkapadDatum
+FROM Poster
+LEFT JOIN PostBegrepp ON Poster.PostID = PostBegrepp.PostID
+WHERE PostBegrepp.PostID IS NULL
+ORDER BY Poster.SkapadDatum DESC;
+""".strip(),
+        "kind": "select",
+    },
+    {
+        "id": "publika-poster",
+        "title": "Publika poster",
+        "description": "WHERE-fråga som visar alla publika poster.",
+        "principle": "WHERE, ORDER BY",
+        "sql": """
+SELECT
+    PostID,
+    Titel,
+    Synlighet,
+    SkapadDatum
+FROM Poster
+WHERE Synlighet = 'publik'
+ORDER BY SkapadDatum DESC;
+""".strip(),
+        "kind": "select",
+    },
+    {
+        "id": "privata-poster",
+        "title": "Privata poster",
+        "description": "WHERE-fråga som visar alla privata poster.",
+        "principle": "WHERE, ORDER BY",
+        "sql": """
+SELECT
+    PostID,
+    Titel,
+    Synlighet,
+    SkapadDatum
+FROM Poster
+WHERE Synlighet = 'privat'
+ORDER BY SkapadDatum DESC;
+""".strip(),
+        "kind": "select",
+    },
+    {
+        "id": "rapport-poster-per-kategori",
+        "title": "Rapport per kategori (stored procedure)",
+        "description": "Anropar lagrad procedur `hamta_poster_per_kategori` för ett bestämt datumintervall.",
+        "principle": "CALL, GROUP BY",
+        "sql": "CALL hamta_poster_per_kategori('2024-01-01', '2026-12-31');",
         "kind": "call",
     },
 ]
@@ -263,8 +380,7 @@ def _execute_whitelisted_query(query_id: str) -> DatabaseQueryRunResponse:
             cursor.execute(sql)
             raw = cursor.fetchall() or []
         elif kind == "call":
-            cursor.execute(sql)
-            raw = cursor.fetchall() or []
+            raw = _fetch_call_rows(cursor, sql)
         else:
             raise HTTPException(status_code=500, detail="Ogiltig query-typ")
 
@@ -280,9 +396,14 @@ def _execute_whitelisted_query(query_id: str) -> DatabaseQueryRunResponse:
     )
 
 
-@router.get("/admin/database-queries", response_model=list[DatabaseQueryCatalogItem])
+@router.get("/admin/db-queries", response_model=list[DatabaseQueryCatalogItem])
 def list_database_queries():
     """Lista alla fördefinierade frågor (metadata + SQL-text)."""
+    return _catalog_items()
+
+
+@router.get("/admin/database-queries", response_model=list[DatabaseQueryCatalogItem], include_in_schema=False)
+def list_database_queries_alias():
     return _catalog_items()
 
 
@@ -292,9 +413,14 @@ def list_database_queries_legacy_alias():
     return _catalog_items()
 
 
-@router.post("/admin/database-queries/{query_id}/run", response_model=DatabaseQueryRunResponse)
+@router.post("/admin/db-queries/{query_id}/run", response_model=DatabaseQueryRunResponse)
 def run_database_query(query_id: str):
     """Kör en whitelistad read-only fråga och returnerar kolumner + rader."""
+    return _execute_whitelisted_query(query_id)
+
+
+@router.post("/admin/database-queries/{query_id}/run", response_model=DatabaseQueryRunResponse, include_in_schema=False)
+def run_database_query_alias(query_id: str):
     return _execute_whitelisted_query(query_id)
 
 

@@ -65,11 +65,11 @@ export interface DatabaseQueryRunResult {
 
 export async function fetchDatabaseQueryCatalog(): Promise<DatabaseQueryCatalogItem[]> {
   try {
-    return await get<DatabaseQueryCatalogItem[]>("/admin/database-queries");
+    return await get<DatabaseQueryCatalogItem[]>("/admin/db-queries");
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg.includes("Not Found") || msg.includes("404")) {
-      return get<DatabaseQueryCatalogItem[]>("/admin/vg-queries");
+      return get<DatabaseQueryCatalogItem[]>("/admin/database-queries");
     }
     throw e;
   }
@@ -78,12 +78,13 @@ export async function fetchDatabaseQueryCatalog(): Promise<DatabaseQueryCatalogI
 export async function runDatabaseQuery(queryId: string): Promise<DatabaseQueryRunResult> {
   const id = encodeURIComponent(queryId);
   try {
-    return await post<DatabaseQueryRunResult>(`/admin/database-queries/${id}/run`, {});
+    return await post<DatabaseQueryRunResult>(`/admin/db-queries/${id}/run`, {});
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg.includes("Not Found") || msg.includes("404")) {
-      return post<DatabaseQueryRunResult>(`/admin/vg-queries/${id}/run`, {});
+      return post<DatabaseQueryRunResult>(`/admin/database-queries/${id}/run`, {});
     }
     throw e;
   }
 }
+
