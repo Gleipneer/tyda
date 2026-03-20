@@ -5,6 +5,7 @@ import AppLayout from "@/components/AppLayout";
 import PageHeader from "@/components/PageHeader";
 import ContentCard from "@/components/ContentCard";
 import ConceptBadge from "@/components/ConceptBadge";
+import ConceptLexiconText from "@/components/ConceptLexiconText";
 import { Sparkles, BookOpen, Brain, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { deletePost, fetchPost, fetchPublicPost } from "@/services/posts";
 import { fetchConcepts, fetchPostConcepts, fetchMatchedConcepts, unlinkConcept } from "@/services/concepts";
@@ -213,6 +214,29 @@ export default function PostDetailPage() {
             </div>
           </ContentCard>
 
+          {!isPublicView && (
+            <div className="xl:hidden">
+              <AIPanel
+                expanded={aiExpanded}
+                onToggle={() => setAiExpanded(!aiExpanded)}
+                interpretation={interpretation}
+                available={interpretStatus?.available}
+                loading={interpretLoading}
+                error={interpretError}
+                preview={interpretationPreview}
+                modelOptions={modelOptions}
+                selectedModel={selectedModel}
+                onSelectModel={setSelectedModel}
+                interpretKind={interpretKind}
+                onSelectInterpretKind={(k) => setInterpretKindOverride(k)}
+                interpretKindOptions={INTERPRET_KIND_OPTIONS}
+                runtimeNote={interpretStatus?.runtime_verification_message}
+                verificationOk={interpretStatus?.runtime_verification_succeeded}
+                onGenerate={handleGenerateInterpretation}
+              />
+            </div>
+          )}
+
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
@@ -252,9 +276,10 @@ export default function PostDetailPage() {
                               {formatScore(m.score)}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-muted-foreground font-body leading-relaxed">
-                            {m.beskrivning?.slice(0, 140)}{m.beskrivning && m.beskrivning.length > 140 ? "..." : ""}
-                          </p>
+                          <ConceptLexiconText
+                            instanceKey={`${m.begrepp_id}-${m.matched_token}`}
+                            beskrivning={m.beskrivning ?? ""}
+                          />
                         </div>
                       </div>
                     </div>
@@ -289,20 +314,23 @@ export default function PostDetailPage() {
                 <BookOpen className="w-4 h-4 text-muted-foreground" />
                 <p className="text-xs uppercase tracking-wider text-muted-foreground font-body">Det du själv har kopplat</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-4">
                 {concepts.length > 0 ? (
                   concepts.map((c) => (
-                    <div key={c.post_begrepp_id} className="flex items-center gap-2">
-                      <ConceptBadge label={c.begrepp.ord} type="manual" />
-                      {canManage && (
-                        <button
-                          type="button"
-                          onClick={() => handleUnlinkConcept(c.post_begrepp_id)}
-                          className="text-xs text-destructive hover:underline"
-                        >
-                          Ta bort
-                        </button>
-                      )}
+                    <div key={c.post_begrepp_id} className="rounded-xl border border-border/50 bg-background/40 p-3">
+                      <div className="flex items-center gap-2">
+                        <ConceptBadge label={c.begrepp.ord} type="manual" />
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => handleUnlinkConcept(c.post_begrepp_id)}
+                            className="text-xs text-destructive hover:underline"
+                          >
+                            Ta bort
+                          </button>
+                        )}
+                      </div>
+                      <ConceptLexiconText instanceKey={`manual-${c.post_begrepp_id}`} beskrivning={c.begrepp.beskrivning} />
                     </div>
                   ))
                 ) : (
@@ -314,28 +342,6 @@ export default function PostDetailPage() {
             </ContentCard>
           </section>
 
-          {!isPublicView && (
-            <div className="xl:hidden">
-              <AIPanel
-                expanded={aiExpanded}
-                onToggle={() => setAiExpanded(!aiExpanded)}
-                interpretation={interpretation}
-                available={interpretStatus?.available}
-                loading={interpretLoading}
-                error={interpretError}
-                preview={interpretationPreview}
-                modelOptions={modelOptions}
-                selectedModel={selectedModel}
-                onSelectModel={setSelectedModel}
-                interpretKind={interpretKind}
-                onSelectInterpretKind={(k) => setInterpretKindOverride(k)}
-                interpretKindOptions={INTERPRET_KIND_OPTIONS}
-                runtimeNote={interpretStatus?.runtime_verification_message}
-                verificationOk={interpretStatus?.runtime_verification_succeeded}
-                onGenerate={handleGenerateInterpretation}
-              />
-            </div>
-          )}
         </div>
 
         <div className="hidden xl:block">
@@ -375,13 +381,21 @@ export default function PostDetailPage() {
 }
 
 function humanizeAIError(raw: string): string {
+  const t = raw.trim();
+  /* Serverns egna tydliga fel (400/502) — visa som de är */
+  if (
+    /^Modellen\s|^Modellen «|^AI-tolkning|^API-gräns|^OpenAI-kontos|^Den valda modellen|^AI-tjänsten/i.test(t) ||
+    (t.length > 40 && t.length < 600 && /OpenAI|leverantör|konto|modell/i.test(t))
+  ) {
+    return raw;
+  }
   if (/openai_api_key|saknas|not configured|inte konfigurerad/i.test(raw)) {
     return "AI-tolkning är inte aktiverad i backend just nu.";
   }
   if (/stöds inte|Tillåtna id/i.test(raw)) {
     return "Den valda modellen finns inte bland de tillåtna alternativen. Välj en modell i listan.";
   }
-  if (/invalid.*model|modellen|kunde inte användas/i.test(raw)) {
+  if (/invalid.*model|kunde inte användas/i.test(raw)) {
     return "Den valda AI-modellen går inte att använda just nu.";
   }
   if (/quota|rate|429/i.test(raw)) {
@@ -549,6 +563,9 @@ function AIPanel({
                   Begärd modell: {interpretation.requested_model ?? "standard (backend)"}
                 </span>
                 <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
+                  Upplöst modell: {interpretation.resolved_model}
+                </span>
+                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
                   Använd modell: {interpretation.used_model}
                 </span>
                 {interpretation.fallback_used && (
@@ -567,6 +584,19 @@ function AIPanel({
                 <p className="text-[11px] text-muted-foreground font-body leading-relaxed">
                   Vissa avsnitt kompletterades automatiskt så att läsningen ska hålla ihop.
                 </p>
+              )}
+              {import.meta.env.DEV && (
+                <details className="rounded-xl border border-border/70 bg-background/70 p-3">
+                  <summary className="cursor-pointer text-xs font-body uppercase tracking-wider text-muted-foreground">
+                    AI-diagnostik
+                  </summary>
+                  <div className="mt-3 space-y-1 text-xs font-body text-muted-foreground">
+                    <p>requested_model: {interpretation.requested_model ?? "standard (backend)"}</p>
+                    <p>resolved_model: {interpretation.resolved_model}</p>
+                    <p>provider: {interpretation.provider}</p>
+                    <p>used_model: {interpretation.used_model}</p>
+                  </div>
+                </details>
               )}
               <div className="space-y-5">
                 {interpretation.sections.map((section) => (

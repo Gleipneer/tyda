@@ -121,7 +121,8 @@ test.describe("NewPostPage runtime verification", () => {
     const modelSelect = page.locator("select:visible").last();
     await expect(modelSelect).toBeVisible();
     const modelOptions = await modelSelect.locator("option").allTextContents();
-    expect(modelOptions.length).toBeGreaterThanOrEqual(4);
+    // Lista speglar serverns verifierade modeller (kan vara en enda om runtime inte bekräftar fler).
+    expect(modelOptions.length).toBeGreaterThanOrEqual(1);
 
     await page.getByRole("button", { name: /generera tolkning|generera igen/i }).click();
     await expect(page.getByText(/modell:/i).last()).toBeVisible({ timeout: 20000 });

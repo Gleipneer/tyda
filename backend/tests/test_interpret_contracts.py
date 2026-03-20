@@ -1,9 +1,13 @@
 import json
 
 import pytest
+from fastapi import HTTPException
 
 from app.routers.interpret import (
     CONTRACTS,
+    _completion_create_kwargs,
+    _default_supported_model_row,
+    _ensure_model_visible_in_status,
     _render_interpretation_text,
     _resolve_interpret_contract,
     _resolve_model_choice,
@@ -55,6 +59,35 @@ def test_resolve_model_accepts_supported_choice():
 def test_resolve_model_rejects_unknown():
     with pytest.raises(ValueError):
         _resolve_model_choice("gpt-3.5-turbo")
+
+
+def test_status_guard_allows_visible_model(monkeypatch):
+    monkeypatch.setattr(
+        "app.routers.interpret._options_for_status",
+        lambda: ([_default_supported_model_row()], False, "status kunde inte verifieras"),
+    )
+    verified, msg = _ensure_model_visible_in_status("gpt-4.1-mini")
+    assert verified is False
+    assert "kunde inte verifieras" in str(msg)
+
+
+def test_status_guard_blocks_hidden_stale_model(monkeypatch):
+    monkeypatch.setattr(
+        "app.routers.interpret._options_for_status",
+        lambda: ([_default_supported_model_row()], False, "Endast standardmodellen visas"),
+    )
+    with pytest.raises(HTTPException) as exc:
+        _ensure_model_visible_in_status("gpt-5")
+    assert exc.value.status_code == 400
+    assert "nuvarande serverkonfiguration" in str(exc.value.detail)
+
+
+def test_completion_kwargs_use_max_tokens_for_legacy_models():
+    assert _completion_create_kwargs("gpt-4.1-mini") == {"temperature": 0.2, "max_tokens": 1200}
+
+
+def test_completion_kwargs_use_max_completion_tokens_for_gpt5():
+    assert _completion_create_kwargs("gpt-5") == {"max_completion_tokens": 1200}
 
 
 def test_poem_contract_has_six_uniform_sections():

@@ -35,6 +35,7 @@ export interface InterpretResponse {
   interpretation: string;
   model_used: string;
   requested_model: string | null;
+  resolved_model: string;
   used_model: string;
   fallback_used: boolean;
   fallback_reason: string | null;

@@ -357,19 +357,27 @@ def _fetch_openai_model_ids() -> tuple[frozenset[str] | None, bool]:
         return None, False
 
 
+def _default_supported_model_row() -> SupportedModel:
+    solo = next(m for m in SUPPORTED_MODELS if m.id == DEFAULT_MODEL_ID)
+    return SupportedModel.model_validate(solo.model_dump())
+
+
 def _options_for_status() -> tuple[list[SupportedModel], bool, str | None]:
     """
-    Bygg modellista för UI.
-    Om runtime-verifiering lyckas: bara modeller som matchar listan (prefix/exakt).
-    Om inga träffar trots lyckad lista: anses listan inkonklusiv — visa alla med förklaring.
+    Bygg modellista för UI — sanningsenlig lista.
+
+    - Om OpenAI-modelllistan kan hämtas: endast id:n som finns (exakt eller prefix) i den listan.
+    - Om listan inte kan hämtas eller ingen träff: **en** modell (DEFAULT_MODEL_ID), inte alla fem —
+      annars väljer användaren modeller backend ändå inte kan anropa.
     """
     ids, ok = _fetch_openai_model_ids()
     if not ok or not ids:
         msg = (
-            "Kunde inte verifiera modeller mot OpenAI just nu. "
-            "Listan visar konfigurerade modeller; anrop kan ändå misslyckas om ditt konto saknar åtkomst."
+            "Kunde inte verifiera tillgängliga modeller mot OpenAI just nu (nätverk, nyckel eller API). "
+            "Endast standardmodellen visas; byt modell när listan kan verifieras igen."
         )
-        return [SupportedModel.model_validate(m.model_dump()) for m in SUPPORTED_MODELS], False, msg
+        row = _default_supported_model_row()
+        return [SupportedModel.model_validate({**row.model_dump(), "runtime_available": False})], False, msg
 
     filtered: list[SupportedModel] = []
     for m in SUPPORTED_MODELS:
@@ -378,12 +386,49 @@ def _options_for_status() -> tuple[list[SupportedModel], bool, str | None]:
 
     if not filtered:
         msg = (
-            "OpenAI-listan matchade inga förkonfigurerade modell-id (oväntat). "
-            "Alla konfigurerade modeller visas; testa ett anrop eller kontrollera konto/API."
+            "Ingen av Tyda:s förkonfigurerade modell-id matchade ditt OpenAI-kontos modelllista. "
+            f"Endast standardmodellen {DEFAULT_MODEL_ID} erbjuds tills detta är utrett (konto/region/åtkomst)."
         )
-        return [SupportedModel.model_validate(m.model_dump()) for m in SUPPORTED_MODELS], False, msg
+        row = _default_supported_model_row()
+        return [SupportedModel.model_validate({**row.model_dump(), "runtime_available": False})], False, msg
 
     return filtered, True, None
+
+
+def _ensure_model_visible_in_status(chosen_model: str) -> tuple[bool, str | None]:
+    """
+    Skydda mot gammalt sparat modellval i klienten.
+
+    POST /interpret får bara använda modeller som den aktuella status-sanningen erbjuder.
+    """
+    options, verified, msg = _options_for_status()
+    if any(opt.id == chosen_model for opt in options):
+        return verified, msg
+    if verified:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Modellen «{chosen_model}» är inte aktiverad på servern just nu. "
+                "Välj en modell som GET /api/interpret/status visar."
+            ),
+        )
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            f"Modellen «{chosen_model}» är inte aktiv i nuvarande serverkonfiguration. "
+            f"{msg or 'Servern kunde inte verifiera modellistan just nu; välj standardmodellen i status-svaret.'}"
+        ),
+    )
+
+
+def _completion_create_kwargs(model_id: str) -> dict[str, float | int]:
+    """
+    GPT-5-familjen använder max_completion_tokens i chat.completions.
+    Äldre modeller i Tyda-flödet använder fortsatt max_tokens.
+    """
+    if model_id.startswith("gpt-5"):
+        return {"max_completion_tokens": 1200}
+    return {"temperature": 0.2, "max_tokens": 1200}
 
 
 def _build_system_prompt(contract: ContractSpec) -> str:
@@ -578,6 +623,17 @@ def interpret_post(
             detail=f"Modellen stöds inte: {bad}. Tillåtna id:n: {allowed}.",
         ) from e
 
+    status_verified, status_msg = _ensure_model_visible_in_status(chosen_model)
+    ids_live, ids_ok = _fetch_openai_model_ids()
+    if ids_ok and ids_live and not _model_id_runtime_available(chosen_model, ids_live):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Modellen «{chosen_model}» finns inte bland ditt OpenAI-kontos tillgängliga modeller just nu "
+                "(eller matchar inte listan). Välj en modell som GET /api/interpret/status visar, eller kontrollera konto/region."
+            ),
+        )
+
     conn = get_connection()
     post = _get_post_with_concepts(conn, post_id)
     conn.close()
@@ -609,6 +665,15 @@ def interpret_post(
 
         http_client = httpx.Client(timeout=60.0, follow_redirects=True, trust_env=False)
         try:
+            logger.info(
+                "Interpret request: post_id=%s requested_model=%s resolved_model=%s provider=openai status_verified=%s",
+                post_id,
+                requested_meta,
+                chosen_model,
+                status_verified,
+            )
+            if status_msg:
+                logger.info("Interpret status note for post_id=%s: %s", post_id, status_msg)
             client = OpenAI(api_key=settings.OPENAI_API_KEY, http_client=http_client)
             response = client.chat.completions.create(
                 model=chosen_model,
@@ -616,8 +681,7 @@ def interpret_post(
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_content},
                 ],
-                max_tokens=1200,
-                temperature=0.2,
+                **_completion_create_kwargs(chosen_model),
             )
             raw_text = (response.choices[0].message.content or "").strip()
             api_model = (getattr(response, "model", None) or chosen_model or "").strip()
@@ -639,10 +703,19 @@ def interpret_post(
             else:
                 sections, degraded = _structure_ai_response(raw_text, contract)
 
+            logger.info(
+                "Interpret response: post_id=%s requested_model=%s resolved_model=%s provider=openai used_model=%s fallback_used=%s",
+                post_id,
+                requested_meta,
+                chosen_model,
+                api_model,
+                fallback_used,
+            )
             return InterpretResponse(
                 interpretation=_render_interpretation_text(sections),
                 model_used=api_model,
                 requested_model=requested_meta,
+                resolved_model=chosen_model,
                 used_model=api_model,
                 fallback_used=fallback_used,
                 fallback_reason=fallback_reason,
@@ -658,7 +731,12 @@ def interpret_post(
         raise
     except Exception as e:
         err_msg = str(e)
-        logger.exception("AI-tolkning misslyckades: %s", err_msg)
+        logger.exception(
+            "AI-tolkning misslyckades: requested_model=%s resolved_model=%s provider=openai error=%s",
+            requested_meta,
+            chosen_model,
+            err_msg,
+        )
         if "rate" in err_msg.lower() or "quota" in err_msg.lower():
             raise HTTPException(503, "API-gräns nådd. Försök senare.") from e
         if "invalid" in err_msg.lower() and "model" in err_msg.lower():

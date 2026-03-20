@@ -73,6 +73,7 @@ class InterpretResponse(BaseModel):
     interpretation: str
     model_used: str
     requested_model: str | None = None
+    resolved_model: str
     used_model: str
     fallback_used: bool = False
     fallback_reason: str | None = None

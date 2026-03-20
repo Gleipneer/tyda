@@ -5,6 +5,7 @@ import AppLayout from "@/components/AppLayout";
 import PageHeader from "@/components/PageHeader";
 import ContentCard from "@/components/ContentCard";
 import ConceptBadge from "@/components/ConceptBadge";
+import ConceptLexiconText from "@/components/ConceptLexiconText";
 import { fetchCategories } from "@/services/categories";
 import { createPost } from "@/services/posts";
 import { analyzeTextConcepts, fetchAnalyzeChainStatus } from "@/services/analyze";
@@ -122,10 +123,6 @@ export default function NewPostPage() {
   );
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
   const charCount = content.trim().length;
-  const formatScore = (score: number) => {
-    const normalized = score > 1 ? score : score * 100;
-    return `${Math.round(normalized)}%`;
-  };
   const hasWritableText = !!(title.trim() || content.trim());
   const interpretationReadiness = !hasWritableText
     ? "Börja skriva så börjar Tyda se mönster."
@@ -278,7 +275,7 @@ export default function NewPostPage() {
         description="Skriv i lugn. Börja med texten."
       />
 
-      <form onSubmit={handleSubmit} className="mx-auto grid w-full max-w-[1040px] gap-4 lg:grid-cols-[minmax(0,1fr),320px] lg:items-start">
+      <form onSubmit={handleSubmit} className="mx-auto grid w-full max-w-6xl gap-4 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
         <div className="space-y-3">
           <ContentCard padding="md" className="bg-card">
             <div className="space-y-5">
@@ -336,6 +333,37 @@ export default function NewPostPage() {
                 />
               </div>
 
+              <div className="sticky top-20 z-10 rounded-2xl border border-border/70 bg-background/95 px-4 py-3.5 shadow-sm backdrop-blur">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-body text-foreground">
+                      {visibility === "publik"
+                        ? "När du sparar blir posten offentlig i Utforska."
+                        : "När du sparar stannar posten i ditt eget rum."}
+                    </p>
+                    <p className="text-xs font-body text-muted-foreground">Spara och utkastskontroller ligger kvar nära editorn.</p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    {(title || content) && (
+                      <button type="button" onClick={clearDraft} className="text-sm text-primary hover:underline">
+                        Töm utkast
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={createMutation.isPending || categories.length === 0 || categoryId === null}
+                      className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-body font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-70 sm:w-auto"
+                    >
+                      {createMutation.isPending ? "Sparar..." : visibility === "publik" ? "Spara och publicera" : "Spara i mitt rum"}
+                    </button>
+                  </div>
+                </div>
+
+                {createMutation.isError && (
+                  <p className="mt-3 text-sm text-destructive">{(createMutation.error as Error).message}</p>
+                )}
+              </div>
+
               <div>
                 <label className="mb-1.5 block text-sm font-body font-medium text-foreground">Innehåll</label>
                 <textarea
@@ -343,12 +371,23 @@ export default function NewPostPage() {
                   onChange={(e) => handleContentChange(e.target.value)}
                   placeholder="Börja skriva din reflektion, dröm eller tanke..."
                   rows={13}
-                  className="w-full min-h-[48svh] resize-y rounded-[24px] border border-input bg-background px-4 py-4 text-sm font-body leading-relaxed text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 sm:min-h-[360px] lg:min-h-[520px]"
+                  className="w-full min-h-[50svh] resize-y rounded-[24px] border border-input bg-background px-5 py-5 text-sm font-body leading-relaxed text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 sm:min-h-[380px] lg:min-h-[560px]"
                   required
                 />
               </div>
+            </div>
+          </ContentCard>
 
-              <div className="rounded-2xl border border-border/70 bg-surface/50 px-4 py-3">
+          <ContentCard padding="md" className="bg-surface/70">
+            <div className="space-y-3.5">
+              <div>
+                <h3 className="text-sm font-display font-medium text-foreground">Det här ser systemet nu</h3>
+                <p className="mt-1 text-xs font-body leading-relaxed text-muted-foreground">
+                  Begrepp och databasförklaringar ligger under editorn som ett separat, AI-fritt underlag.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs font-body uppercase tracking-wider text-muted-foreground">Tyda ser just nu</span>
                   {analyzeError ? (
@@ -396,11 +435,18 @@ export default function NewPostPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {topMatches.length > 0 ? (
                     topMatches.map((concept) => (
-                      <div key={`${concept.begrepp_id}-${concept.matched_token}`} className="flex flex-col gap-1">
+                      <div
+                        key={`${concept.begrepp_id}-${concept.matched_token}`}
+                        className="flex flex-col gap-1 rounded-xl border border-border/50 bg-background/40 p-2"
+                      >
                         <ConceptBadge label={concept.ord} type={badgeType(concept)} />
                         <span className="text-[10px] font-body text-muted-foreground">
                           {matchTypeLabel(concept.match_type)}
                         </span>
+                        <ConceptLexiconText
+                          instanceKey={`draft-main-${concept.begrepp_id}-${concept.matched_token}`}
+                          beskrivning={concept.beskrivning}
+                        />
                       </div>
                     ))
                   ) : (
@@ -409,38 +455,6 @@ export default function NewPostPage() {
                     </p>
                   )}
                 </div>
-              </div>
-
-              <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3.5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-body text-foreground">
-                      {visibility === "publik"
-                        ? "När du sparar publiceras posten också i Utforska."
-                        : "När du sparar hamnar posten bara i ditt eget rum."}
-                    </p>
-                    <p className="text-xs font-body text-muted-foreground">Utkast sparas lokalt medan du skriver.</p>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={createMutation.isPending || categories.length === 0 || categoryId === null}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-body font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-70 sm:w-auto"
-                  >
-                    {createMutation.isPending ? "Sparar..." : visibility === "publik" ? "Spara och publicera" : "Spara i mitt rum"}
-                  </button>
-                </div>
-
-                {(title || content) && (
-                  <div className="mt-2.5 flex justify-start">
-                    <button type="button" onClick={clearDraft} className="text-sm text-primary hover:underline">
-                      Töm utkast
-                    </button>
-                  </div>
-                )}
-
-                {createMutation.isError && (
-                  <p className="mt-3 text-sm text-destructive">{(createMutation.error as Error).message}</p>
-                )}
               </div>
             </div>
           </ContentCard>
@@ -455,7 +469,7 @@ export default function NewPostPage() {
           )}
         </div>
 
-        <aside className="space-y-3">
+        <aside className="space-y-3 xl:sticky xl:top-20">
           <ContentCard padding="md" className="bg-card/98">
             <div className="space-y-3.5">
               <div>
@@ -464,6 +478,19 @@ export default function NewPostPage() {
                   {interpretationReadiness}
                 </p>
               </div>
+
+              {leadingSignals.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-body uppercase tracking-wider text-muted-foreground">Tydligaste spår</p>
+                  <div className="flex flex-wrap gap-2">
+                    {leadingSignals.map((signal) => (
+                      <span key={signal} className="rounded-full bg-accent px-3 py-1.5 text-sm font-body text-accent-foreground">
+                        {signal}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
@@ -502,8 +529,8 @@ export default function NewPostPage() {
                   </select>
                   <p className="mt-2 text-xs font-body leading-relaxed text-muted-foreground">
                     {visibility === "privat"
-                      ? "Bara du ser posten i ditt eget rum."
-                      : "Posten blir synlig i Utforska när du sparar den."}
+                      ? "Bara du ser posten i ditt eget rum. Den syns inte i Utforska."
+                      : "Posten blir synlig i Utforska direkt när du sparar."}
                   </p>
                 </div>
               </div>
@@ -511,66 +538,11 @@ export default function NewPostPage() {
           </ContentCard>
 
           <ContentCard padding="md" className="bg-surface/70">
-            <div className="space-y-3.5">
-              <div>
-                <h3 className="text-sm font-display font-medium text-foreground">Det här ser systemet nu</h3>
-                <p className="mt-1 text-xs font-body leading-relaxed text-muted-foreground">
-                  Underlag från texten. Inget sparas som koppling förrän du själv väljer det på postsidan.
-                </p>
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-body uppercase tracking-wider text-muted-foreground">Tydligaste spår</p>
-                {analyzeError ? (
-                  <p className="text-sm font-body text-destructive">Ingen live-matchning: {analyzeError}</p>
-                ) : leadingSignals.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {leadingSignals.map((signal) => (
-                      <span key={signal} className="rounded-full bg-accent px-3 py-1.5 text-sm font-body text-accent-foreground">
-                        {signal}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm font-body text-muted-foreground">Inga tydliga spår ännu.</p>
-                )}
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-body uppercase tracking-wider text-muted-foreground">Träffar</p>
-                {analyzeError ? (
-                  <p className="text-sm font-body text-destructive">Åtgärda felet ovan för att se träffar.</p>
-                ) : topMatches.length > 0 ? (
-                  <div className="space-y-2">
-                    {topMatches.map((concept) => (
-                      <div
-                        key={`${concept.begrepp_id}-${concept.matched_token}-panel`}
-                        className="rounded-xl border border-border/70 bg-background/60 px-3 py-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <ConceptBadge label={concept.ord} type={badgeType(concept)} />
-                          <span className="text-[11px] font-body text-muted-foreground">
-                            {formatScore(concept.score)}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-[11px] font-body text-muted-foreground">
-                          {matchTypeLabel(concept.match_type)}
-                          {concept.matched_token !== concept.ord && ` - "${concept.matched_token}"`}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm font-body text-muted-foreground">
-                    Tyda väntar på att texten ska ge tydliga motiv, symboler eller ordspår.
-                  </p>
-                )}
-              </div>
-
+            <div className="space-y-3">
               <div className="rounded-xl border border-border/70 bg-background/60 px-4 py-3">
                 <p className="mb-2 text-xs font-body uppercase tracking-wider text-muted-foreground">Tolkning</p>
                 <p className="text-sm font-body leading-relaxed text-muted-foreground">
-                  När posten är sparad kan du öppna den och låta Tyda bygga en första tolkning utifrån texten och begreppen som syns här.
+                  När posten är sparad kan du öppna den och låta Tyda bygga en första tolkning utifrån texten och begreppen under editorn.
                 </p>
               </div>
             </div>
