@@ -30,6 +30,9 @@ venv/
 *.egg-info/
 .eggs/
 
+# Lokala mysqldump-filer (se database/scripts/backup.ps1)
+backups/
+
 # Databases
 *.sqlite
 *.db

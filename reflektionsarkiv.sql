@@ -89,7 +89,7 @@ CREATE INDEX idx_postbegrepp_begrepp ON PostBegrepp(BegreppID);
 
 -- Tabell: AktivitetLogg
 -- Denna tabell används som enkel aktivitetslogg för poster
--- I dagens implementation skrivs en rad när en ny post skapas
+-- Triggern trigga_ny_post_logg skriver vid INSERT; trigga_post_uppdaterad_logg vid relevant UPDATE
 CREATE TABLE AktivitetLogg (
     LoggID INT AUTO_INCREMENT PRIMARY KEY,
     PostID INT NOT NULL,
@@ -114,6 +114,21 @@ FOR EACH ROW
 BEGIN
     INSERT INTO AktivitetLogg (PostID, AnvandarID, Handelse)
     VALUES (NEW.PostID, NEW.AnvandarID, 'Ny post skapad');
+END //
+
+CREATE TRIGGER trigga_post_uppdaterad_logg
+AFTER UPDATE ON Poster
+FOR EACH ROW
+BEGIN
+    IF NOT (
+        OLD.Titel <=> NEW.Titel
+        AND OLD.Innehall <=> NEW.Innehall
+        AND OLD.Synlighet <=> NEW.Synlighet
+        AND OLD.KategoriID <=> NEW.KategoriID
+    ) THEN
+        INSERT INTO AktivitetLogg (PostID, AnvandarID, Handelse)
+        VALUES (NEW.PostID, NEW.AnvandarID, 'Post uppdaterad');
+    END IF;
 END //
 
 DELIMITER ;

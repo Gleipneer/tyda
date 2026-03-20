@@ -185,6 +185,7 @@ def test_trigger_and_procedure_still_exist():
         SELECT TRIGGER_NAME
         FROM information_schema.TRIGGERS
         WHERE TRIGGER_SCHEMA = DATABASE()
+        ORDER BY TRIGGER_NAME
         """
     )
     routines = _fetchall(
@@ -195,5 +196,43 @@ def test_trigger_and_procedure_still_exist():
           AND ROUTINE_TYPE = 'PROCEDURE'
         """
     )
-    assert triggers == [{"TRIGGER_NAME": "trigga_ny_post_logg"}]
+    names = [t["TRIGGER_NAME"] for t in triggers]
+    assert names == ["trigga_ny_post_logg", "trigga_post_uppdaterad_logg"]
     assert routines == [{"ROUTINE_NAME": "hamta_poster_per_kategori"}]
+
+
+def test_update_post_creates_activity_log_row():
+    """trigga_post_uppdaterad_logg lägger en rad vid ändring av titel (migration 016)."""
+    conn = get_connection()
+    conn.autocommit = False
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT PostID, Titel FROM Poster LIMIT 1")
+        row = cur.fetchone()
+        assert row is not None
+        pid, titel = row["PostID"], row["Titel"]
+        cur.execute(
+            """
+            SELECT COUNT(*) AS c FROM AktivitetLogg
+            WHERE PostID = %s AND Handelse = 'Post uppdaterad'
+            """,
+            (pid,),
+        )
+        before = cur.fetchone()["c"]
+        cur.execute(
+            "UPDATE Poster SET Titel = %s WHERE PostID = %s",
+            (titel + " _tmp_pytest_", pid),
+        )
+        cur.execute(
+            """
+            SELECT COUNT(*) AS c FROM AktivitetLogg
+            WHERE PostID = %s AND Handelse = 'Post uppdaterad'
+            """,
+            (pid,),
+        )
+        after = cur.fetchone()["c"]
+        assert after == before + 1
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()

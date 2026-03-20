@@ -98,6 +98,7 @@ def main():
             "013_synlighet_privat_publik.sql",
             "014_add_check_titel.sql",
             "015_add_auth_columns.sql",
+            "016_add_poster_update_trigger.sql",
         ]:
             path = os.path.join(migrations_dir, name)
             if os.path.exists(path):
@@ -114,6 +115,21 @@ def main():
                     if cur.fetchone()[0] > 0:
                         print("Kör", name, "...")
                         print("  Hoppar över (kolumnen finns redan, t.ex. från reflektionsarkiv.sql)")
+                        cur.close()
+                        continue
+                    cur.close()
+                if name == "016_add_poster_update_trigger.sql":
+                    cur = conn.cursor()
+                    cur.execute(
+                        """
+                        SELECT COUNT(*) FROM information_schema.TRIGGERS
+                        WHERE TRIGGER_SCHEMA = DATABASE()
+                          AND TRIGGER_NAME = 'trigga_post_uppdaterad_logg'
+                        """
+                    )
+                    if cur.fetchone()[0] > 0:
+                        print("Kör", name, "...")
+                        print("  Hoppar över (triggern finns redan, t.ex. från reflektionsarkiv.sql)")
                         cur.close()
                         continue
                     cur.close()

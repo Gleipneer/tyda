@@ -13,7 +13,7 @@
 | Implementera i RDBMS (MySQL/PostgreSQL) | ✅ UPPFYLLT | MySQL, mysql-connector-python |
 | Primär- och främmande nycklar | ✅ UPPFYLLT | Alla tabeller har PK, Poster/PostBegrepp/AktivitetLogg har FK |
 | Dataintegritet (NOT NULL, CHECK, DEFAULT, FK) | ✅ UPPFYLLT | NOT NULL, DEFAULT, FK, ENUM, UNIQUE, CHECK (titel) |
-| Minst en trigger | ✅ UPPFYLLT | trigga_ny_post_logg |
+| Minst en trigger | ✅ UPPFYLLT | `trigga_ny_post_logg`, `trigga_post_uppdaterad_logg` (två triggers) |
 | JOIN och GROUP BY i minst 2 frågor | ✅ UPPFYLLT | reflektionsarkiv.sql + backend repositories |
 | Motivera i README | ⚠️ DELVIS | README har översikt, saknar stark reflektion om designval |
 

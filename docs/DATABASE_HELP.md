@@ -7,7 +7,7 @@ Allt här bygger på `reflektionsarkiv.sql`.
 
 ## Vad är det här?
 
-En liten relationsdatabas för att spara drömmar, tankar och reflektioner. Den bär grunddatan, medan symbolmatchning och AI-tolkning ligger i mellanlagret. 6 tabeller, en trigger och en lagrad procedur.
+En liten relationsdatabas för att spara drömmar, tankar och reflektioner. Den bär grunddatan, medan symbolmatchning och AI-tolkning ligger i mellanlagret. 6 tabeller, två triggers och en lagrad procedur.
 
 ---
 
@@ -23,7 +23,7 @@ En liten relationsdatabas för att spara drömmar, tankar och reflektioner. Den 
 
 **PostBegrepp** – Kopplingstabellen. En post kan ha många begrepp, ett begrepp kan finnas i många poster.
 
-**AktivitetLogg** – En enkel loggtabell. I dagens implementation skriver triggern en rad här när en post skapas. Det är inte en full revisionshistorik.
+**AktivitetLogg** – En enkel loggtabell. Triggern `trigga_ny_post_logg` skriver vid ny post; `trigga_post_uppdaterad_logg` vid relevant uppdatering. Det är inte en full revisionshistorik (ingen diff per fält).
 
 ---
 

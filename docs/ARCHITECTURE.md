@@ -60,7 +60,8 @@
 
 **Lista poster:** Frontend → GET /api/posts → JOIN Poster+Anvandare+Kategorier → JSON
 
-**Skapa post:** Frontend → POST /api/posts → INSERT Poster → trigger skapar AktivitetLogg
+**Skapa post:** Frontend → POST /api/posts → INSERT Poster → trigger skapar AktivitetLogg  
+**Uppdatera post:** UPDATE Poster (vid behov) → andra triggern kan lägga rad i AktivitetLogg
 
 **Post-detalj:** GET /api/posts/{id}, GET /api/posts/{id}/concepts, GET /api/posts/{id}/matched-concepts
 

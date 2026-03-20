@@ -145,7 +145,7 @@ test.describe("NewPostPage runtime verification", () => {
   test("13: About page reflects current database truth", async ({ page }) => {
     await page.goto("/about", { waitUntil: "load", timeout: 15000 });
     await expect(page.getByRole("heading", { name: /om tyda/i })).toBeVisible();
-    await expect(page.getByText(/6 tabeller, 1 trigger och 1 lagrad procedur/i)).toBeVisible();
+    await expect(page.getByText(/6 tabeller, 2 triggers och 1 lagrad procedur/i)).toBeVisible();
     await expect(page.getByText(/inte en full historik över alla ändringar/i)).toBeVisible();
     await expect(page.getByText(/ON DELETE CASCADE/i).first()).toBeVisible();
   });

@@ -31,7 +31,7 @@ const tables = [
   },
   {
     name: "AktivitetLogg",
-    description: "En enkel teknisk loggtabell. Idag skrivs en rad när en ny post skapas. Det är inte en full historik över alla ändringar.",
+    description: "En enkel teknisk loggtabell. En rad vid ny post; en rad när titel, innehåll, synlighet eller kategori ändras. Inte full auditlogg.",
     fields: "LoggID, PostID, AnvandarID, Handelse, Tidpunkt",
   },
 ];
@@ -173,13 +173,13 @@ export default function AboutDatabasePage() {
         <h2 className="text-xl font-display font-semibold text-foreground mb-3">Det viktigaste först</h2>
         <div className="grid gap-4 lg:grid-cols-3">
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            Databasen är medvetet liten: 6 tabeller, 1 trigger och 1 lagrad procedur. Tyngre matchning och AI-logik ligger i backend, inte i schemat.
+            Databasen är medvetet liten: 6 tabeller, 2 triggers och 1 lagrad procedur. Tyngre matchning och AI-logik ligger i backend, inte i schemat.
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
             ER-diagrammet visar tabeller, kolumner och relationer. Mer beskrivning per tabell finns under &quot;Tabeller&quot;. `PostBegrepp` är den verkliga många-till-många-tabellen; automatisk begreppsmatchning räknas i backend och sparas inte där.
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            `AktivitetLogg` är idag en enkel skapelselogg för poster, inte en full auditlogg över allt som händer i systemet.
+            `AktivitetLogg` loggar skapande och relevanta uppdateringar av poster — inte en full auditlogg över allt som händer i systemet.
           </p>
         </div>
       </ContentCard>
@@ -259,7 +259,7 @@ export default function AboutDatabasePage() {
           <h2 className="text-lg font-display font-semibold text-foreground mb-3">Det viktiga att förstå</h2>
           <div className="space-y-4 text-sm font-body text-muted-foreground">
             <p>
-              ER-diagrammet visar schemat. Triggern är inte en egen tabell, utan logiken som fyller `AktivitetLogg` när en ny rad skapas i `Poster`.
+              ER-diagrammet visar schemat. Triggerna är inte egna tabeller, utan logik som fyller `AktivitetLogg` när en post skapas eller viktiga fält uppdateras i `Poster`.
             </p>
             <p>
               Automatisk begreppsmatchning lagras inte direkt i databasen. Den räknas fram i backend när text analyseras. Bara manuella kopplingar sparas i `PostBegrepp`.
@@ -268,7 +268,7 @@ export default function AboutDatabasePage() {
               AI-tolkningen läser postens text, de automatiskt matchade begreppen och de manuellt kopplade begreppen. Själva AI-svaret sparas inte i databasen.
             </p>
             <p>
-              `AktivitetLogg` ska läsas som en enkel poster-logg. Uppdateringar, automatchning och AI-generering skrivs inte hit i dagens implementation.
+              `AktivitetLogg` är en enkel poster-logg: skapande och ändringar av titel/innehåll/synlighet/kategori. Automatchning och AI-svar skrivs inte hit.
             </p>
           </div>
         </ContentCard>
@@ -324,7 +324,7 @@ export default function AboutDatabasePage() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">3</span>
-                <span>Databasens trigger skriver en rad i `AktivitetLogg` när posten skapas. Det gör loggen till en enkel skapelselogg, inte en full historik över allt som händer senare.</span>
+                <span>Triggarna skriver i `AktivitetLogg` när posten skapas och när titel, innehåll, synlighet eller kategori ändras — fortfarande ingen full revisionshistorik.</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">4</span>

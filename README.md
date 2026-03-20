@@ -83,7 +83,7 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 - Skrivflödet ligger i `Ny post`: titel, innehåll, kategori och synlighet. Utkast sparas lokalt per aktiv användare.
 - Kategori väljs vid skapande av posten. UI:t använder `Privat` och `Publik`; i databasen/API:t finns värdena `privat` och `publik`.
 - AI-tolkning körs från postdetaljen och har nu modellval i UI:t. Frontend hämtar tillåtna modeller från backend och skickar vald modell till interpret-endpointen.
-- Databasen är fortfarande avsiktligt liten: 6 tabeller, 1 trigger, 1 lagrad procedur. Automatisk matchning och AI-tolkning ligger främst i backend, inte i schemat.
+- Databasen är fortfarande avsiktligt liten: 6 tabeller, 2 triggers, 1 lagrad procedur. Automatisk matchning och AI-tolkning ligger främst i backend, inte i schemat.
 - Testbarheten bygger just nu främst på stabila routes, roller/labels/placeholders och runtime-testet för ny-post-flödet i `frontend/e2e-runtime/newpost-runtime.spec.ts`.
 
 ## API
@@ -125,7 +125,7 @@ Projektet använder en relationsdatabas (MySQL) eftersom datan är strukturerad:
 
 - **Anvandare, Kategorier, Poster, Begrepp** – separata tabeller för återanvändning och normalisering.
 - **PostBegrepp** – kopplingstabell för många-till-många mellan Poster och Begrepp. En post kan ha många begrepp, ett begrepp kan finnas i många poster. UNIQUE(PostID, BegreppID) hindrar dubbletter.
-- **AktivitetLogg** – enkel logg separat från postdatan. Triggern skriver en rad när en post skapas.
+- **AktivitetLogg** – enkel logg separat från postdatan. Triggarna skriver vid ny post respektive när titel, innehåll, synlighet eller kategori ändras.
 
 ### Varför Synlighet bara är privat och publik
 
@@ -135,10 +135,13 @@ Tidigare fanns `delad` som tredje alternativ. Det togs bort för att förenkla: 
 
 Kolumnen Kommentar togs bort som designval. Ingen UI använde den, och modellen blev enklare. Manuella begreppskopplingar sparas utan kommentar.
 
-### Varför triggern och proceduren finns
+### Varför triggarna och proceduren finns
 
-- **Trigger** `trigga_ny_post_logg` – automatiskt loggande vid ny post. Visar att databasen kan reagera på händelser.
+- **Trigger** `trigga_ny_post_logg` – loggning vid ny post.
+- **Trigger** `trigga_post_uppdaterad_logg` – loggning vid uppdatering som ändrar titel, innehåll, synlighet eller kategori.
 - **Procedure** `hamta_poster_per_kategori` – databasnära analys. Visar att logik kan ligga i databasen.
+
+**Säkerhetskopia:** se [`docs/BACKUP.md`](docs/BACKUP.md) och `database/scripts/backup.ps1`.
 
 ### Index och prestanda
 
