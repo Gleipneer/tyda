@@ -30,7 +30,7 @@ CREATE TABLE Anvandare (
 
 -- Tabell: Kategorier
 -- Här sparas vilka typer av poster som finns, till exempel dröm, vision och tanke
--- TEXT gör så att kolumnen kan innehålla mycket lång text
+-- TEXT gör så att kolumnen kan innehålla mycket lång text, Beskrivning gör så att kolumnen kan innehålla en beskrivning av kategorin
 CREATE TABLE Kategorier (
     KategoriID INT AUTO_INCREMENT PRIMARY KEY,
     Namn VARCHAR(50) NOT NULL UNIQUE,
@@ -40,6 +40,8 @@ CREATE TABLE Kategorier (
 -- Tabell: Poster
 -- Här sparas själva användarens inlägg, alltså drömmar, visioner, tankar och reflektioner
 -- ENUM gör så att kolumnen kan bara innehålla en av de två värdena: privat eller publik
+-- CONSTRAINT chk_poster_titel_nonempty gör så att titeln inte kan vara tom
+-- ON DELETE CASCADE undviks medvetet för att Poster inte ska försvinna om en användare eller kategori tas bort
 CREATE TABLE Poster (
     PostID INT AUTO_INCREMENT PRIMARY KEY,
     AnvandarID INT NOT NULL,
@@ -75,6 +77,7 @@ CREATE TABLE Begrepp (
 -- Detta är kopplingstabellen mellan Poster och Begrepp
 -- En post kan ha många begrepp och ett begrepp kan finnas i många poster
 -- DELETE CASCADE gör så att om en post eller ett begrepp tas bort, tas även kopplingar bort
+-- UNIQUE gör så att Postbegrepp inte kan ha samma post och begrepp kopplade till sig flera gånger.
 CREATE TABLE PostBegrepp (
     PostBegreppID INT AUTO_INCREMENT PRIMARY KEY,
     PostID INT NOT NULL,
@@ -106,6 +109,7 @@ CREATE INDEX idx_aktivitetlogg_post_tidpunkt ON AktivitetLogg(PostID, Tidpunkt);
 
 -- Trigger: trigga_ny_post_logg
 -- Denna trigger loggar automatiskt när en ny post läggs in i tabellen Poster
+-- FOR EACH ROW Om du lägger in 5 Poster samtidigt så körs triggern 5 gånger.
 DELIMITER //
 
 CREATE TRIGGER trigga_ny_post_logg
@@ -116,6 +120,7 @@ BEGIN
     VALUES (NEW.PostID, NEW.AnvandarID, 'Ny post skapad');
 END //
 
+-- Om 1 av 4 inte är sann så triggas uppdateringen av loggen.
 CREATE TRIGGER trigga_post_uppdaterad_logg
 AFTER UPDATE ON Poster
 FOR EACH ROW
@@ -135,6 +140,7 @@ DELIMITER ;
 
 -- Stored Procedure: hamta_poster_per_kategori
 -- Denna procedur visar hur många poster som skapats per kategori mellan två datum
+-- Vi använder DELIMITER // så att MYSQL kan läsa hella PROCEDURE korrekt utan avbrott mellan DELIMETER // och END //
 DELIMITER //
 
 CREATE PROCEDURE hamta_poster_per_kategori (
@@ -388,3 +394,14 @@ SHOW TABLES;
 -- Gå tillbaka till restoretest igen om man vill testa import där senare
 USE reflektionsarkiv_restoretest;
 SHOW TABLES;
+
+-- Denna SELECT listar hur många gånger varje begrepp har kopplats till poster
+SELECT
+    Begrepp.BegreppID,
+    Begrepp.Ord,
+    COUNT(PostBegrepp.PostBegreppID) AS AntalKopplingar
+FROM Begrepp
+LEFT JOIN PostBegrepp ON Begrepp.BegreppID = PostBegrepp.BegreppID
+GROUP BY Begrepp.BegreppID, Begrepp.Ord
+HAVING COUNT(PostBegrepp.PostBegreppID) >= 0
+ORDER BY AntalKopplingar DESC;
