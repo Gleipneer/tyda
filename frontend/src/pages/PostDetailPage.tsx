@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/AppLayout";
 import PageHeader from "@/components/PageHeader";
 import ContentCard from "@/components/ContentCard";
 import ConceptBadge from "@/components/ConceptBadge";
-import { Sparkles, BookOpen, Brain, ChevronDown, ChevronUp } from "lucide-react";
-import { fetchPost, fetchPublicPost } from "@/services/posts";
+import { Sparkles, BookOpen, Brain, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
+import { deletePost, fetchPost, fetchPublicPost } from "@/services/posts";
 import { fetchPostConcepts, fetchMatchedConcepts, unlinkConcept } from "@/services/concepts";
 import { fetchInterpretStatus, interpretPost } from "@/services/interpret";
-import type { InterpretModelOption, InterpretResponse } from "@/services/interpret";
+import type { InterpretKind, InterpretModelOption, InterpretResponse } from "@/services/interpret";
 import { matchTypeLabel } from "@/lib/matchTypeLabels";
-import { getInterpretationPreview, type InterpretationPreview } from "@/lib/interpretationContracts";
+import {
+  INTERPRET_KIND_OPTIONS,
+  defaultInterpretKindFromCategory,
+  getInterpretationPreviewForKind,
+  type InterpretationPreview,
+} from "@/lib/interpretationContracts";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import VisibilityBadge from "@/components/VisibilityBadge";
 
@@ -26,7 +31,7 @@ export default function PostDetailPage() {
 
   const { data: post, isLoading, error } = useQuery({
     queryKey: ["post", postId, isPublicView, activeUser?.anvandar_id],
-    queryFn: () => (isPublicView ? fetchPublicPost(postId) : fetchPost(postId, activeUser?.anvandar_id)),
+    queryFn: () => (isPublicView ? fetchPublicPost(postId) : fetchPost(postId)),
     enabled: !!postId && (isPublicView || !!activeUser),
   });
 
@@ -36,25 +41,32 @@ export default function PostDetailPage() {
     enabled: !!postId,
   });
 
-  const { data: matched = { matches: [] } } = useQuery({
-    queryKey: ["matched-concepts", postId],
+  const {
+    data: matched,
+    isError: matchedConceptsError,
+    isLoading: matchedConceptsLoading,
+  } = useQuery({
+    queryKey: ["matched-concepts", postId, isPublicView, activeUser?.anvandar_id],
     queryFn: () => fetchMatchedConcepts(postId),
-    enabled: !!postId,
+    enabled: !!postId && (isPublicView || !!activeUser),
   });
+  const matchedList = matched?.matches ?? [];
 
   const { data: interpretStatus } = useQuery({
     queryKey: ["interpret-status"],
     queryFn: fetchInterpretStatus,
   });
   const orderedMatches = useMemo(
-    () => [...matched.matches].sort((a, b) => b.score - a.score),
-    [matched.matches]
+    () => [...matchedList].sort((a, b) => b.score - a.score),
+    [matchedList]
   );
 
   const [interpretation, setInterpretation] = useState<InterpretResponse | null>(null);
   const [interpretLoading, setInterpretLoading] = useState(false);
   const [interpretError, setInterpretError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("");
+  /** När null: följ postens kategori som förval. */
+  const [interpretKindOverride, setInterpretKindOverride] = useState<InterpretKind | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -67,11 +79,24 @@ export default function PostDetailPage() {
     });
   }, [interpretStatus]);
 
+  const defaultInterpretKind = useMemo(
+    () => defaultInterpretKindFromCategory(post?.kategori?.namn),
+    [post?.kategori?.namn]
+  );
+  const interpretKind = interpretKindOverride ?? defaultInterpretKind;
+
+  useEffect(() => {
+    setInterpretKindOverride(null);
+  }, [postId, post?.kategori?.namn]);
+
   const handleGenerateInterpretation = () => {
     if (!postId) return;
     setInterpretLoading(true);
     setInterpretError(null);
-    interpretPost(postId, selectedModel || undefined)
+    interpretPost(postId, {
+      model: selectedModel || undefined,
+      interpret_kind: interpretKind,
+    })
       .then((response) => setInterpretation(response))
       .catch((e) => setInterpretError(e.message))
       .finally(() => setInterpretLoading(false));
@@ -111,9 +136,13 @@ export default function PostDetailPage() {
   }
 
   const date = new Date(post.skapad_datum).toLocaleDateString("sv-SE");
+  const canManage =
+    !isPublicView &&
+    !!activeUser &&
+    (activeUser.anvandar_id === post.anvandar.anvandar_id || activeUser.ar_admin);
   const visibleMatches = showAllMatches ? orderedMatches : orderedMatches.slice(0, 6);
   const topSignals = orderedMatches.slice(0, 4).map((match) => match.ord);
-  const interpretationPreview = getInterpretationPreview(post.kategori.namn);
+  const interpretationPreview = getInterpretationPreviewForKind(interpretKind);
   const modelOptions = interpretStatus?.model_options ?? [];
   const formatScore = (score: number) => `${Math.round(score > 1 ? score : score * 100)}%`;
 
@@ -126,10 +155,43 @@ export default function PostDetailPage() {
             <span className="px-2.5 py-1 bg-muted rounded-full">{date}</span>
             <VisibilityBadge value={post.synlighet} />
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link to={isPublicView ? "/utforska" : "/mitt-rum"} className="text-primary hover:underline">
               {isPublicView ? "← Utforska" : "← Mitt rum"}
             </Link>
+            {canManage && (
+              <>
+                <Link
+                  to={`/posts/${postId}/edit`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/60"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Redigera
+                </Link>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "Ta bort posten permanent? Detta kan inte ångras. Kopplingar och logg rensas enligt databasens regler."
+                      )
+                    ) {
+                      return;
+                    }
+                    try {
+                      await deletePost(postId);
+                      navigate("/posts");
+                    } catch (e) {
+                      window.alert(e instanceof Error ? e.message : "Kunde inte radera");
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 px-3 py-1.5 text-xs font-body text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Radera
+                </button>
+              </>
+            )}
           </div>
         </div>
       </PageHeader>
@@ -162,7 +224,13 @@ export default function PostDetailPage() {
                 </div>
               )}
               <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground font-body">Automatiskt hittade i texten</p>
-              {matched.matches.length > 0 ? (
+              {matchedConceptsError ? (
+                <p className="text-sm text-destructive font-body leading-relaxed">
+                  Kunde inte hämta automatiska träffar (t.ex. saknad inloggning eller nätverksfel). Uppdatera sidan eller logga in igen.
+                </p>
+              ) : matchedConceptsLoading ? (
+                <p className="text-sm text-muted-foreground font-body">Letar efter begrepp i texten…</p>
+              ) : matchedList.length > 0 ? (
                 <div className="space-y-2.5">
                   {visibleMatches.map((m) => (
                     <div key={`${m.begrepp_id}-${m.matched_token}`} className="rounded-xl border border-border/60 bg-background/60 p-3.5">
@@ -185,18 +253,24 @@ export default function PostDetailPage() {
                       </div>
                     </div>
                   ))}
-                  {matched.matches.length > 6 && (
+                  {matchedList.length > 6 && (
                     <button
                       type="button"
                       onClick={() => setShowAllMatches((value) => !value)}
                       className="text-sm text-primary hover:underline"
                     >
-                      {showAllMatches ? "Visa färre" : `Visa alla (${matched.matches.length})`}
+                      {showAllMatches ? "Visa färre" : `Visa alla (${matchedList.length})`}
                     </button>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Inga begrepp hittades automatiskt i texten.</p>
+                <div className="space-y-2 text-sm text-muted-foreground font-body leading-relaxed">
+                  <p>Inga begrepp hittades automatiskt i texten.</p>
+                  <p className="text-xs">
+                    Träffar kommer bara från ord som finns i lexikonet (<code className="rounded bg-muted px-1">Begrepp</code> i databasen). Basfilen har bara några få ord — kör migrationerna under{" "}
+                    <code className="rounded bg-muted px-1">database/migrations</code> (se README) så lexikonet fylls med t.ex. berg, sten, guld m.m.
+                  </p>
+                </div>
               )}
             </ContentCard>
 
@@ -210,7 +284,7 @@ export default function PostDetailPage() {
                   concepts.map((c) => (
                     <div key={c.post_begrepp_id} className="flex items-center gap-2">
                       <ConceptBadge label={c.begrepp.ord} type="manual" />
-                      {!isPublicView && (
+                      {canManage && (
                         <button
                           type="button"
                           onClick={() => handleUnlinkConcept(c.post_begrepp_id)}
@@ -243,6 +317,11 @@ export default function PostDetailPage() {
                 modelOptions={modelOptions}
                 selectedModel={selectedModel}
                 onSelectModel={setSelectedModel}
+                interpretKind={interpretKind}
+                onSelectInterpretKind={(k) => setInterpretKindOverride(k)}
+                interpretKindOptions={INTERPRET_KIND_OPTIONS}
+                runtimeNote={interpretStatus?.runtime_verification_message}
+                verificationOk={interpretStatus?.runtime_verification_succeeded}
                 onGenerate={handleGenerateInterpretation}
               />
             </div>
@@ -263,6 +342,11 @@ export default function PostDetailPage() {
                 modelOptions={modelOptions}
                 selectedModel={selectedModel}
                 onSelectModel={setSelectedModel}
+                interpretKind={interpretKind}
+                onSelectInterpretKind={(k) => setInterpretKindOverride(k)}
+                interpretKindOptions={INTERPRET_KIND_OPTIONS}
+                runtimeNote={interpretStatus?.runtime_verification_message}
+                verificationOk={interpretStatus?.runtime_verification_succeeded}
                 onGenerate={handleGenerateInterpretation}
               />
             ) : (
@@ -284,7 +368,10 @@ function humanizeAIError(raw: string): string {
   if (/openai_api_key|saknas|not configured|inte konfigurerad/i.test(raw)) {
     return "AI-tolkning är inte aktiverad i backend just nu.";
   }
-  if (/invalid.*model|modellen/i.test(raw)) {
+  if (/stöds inte|Tillåtna id/i.test(raw)) {
+    return "Den valda modellen finns inte bland de tillåtna alternativen. Välj en modell i listan.";
+  }
+  if (/invalid.*model|modellen|kunde inte användas/i.test(raw)) {
     return "Den valda AI-modellen går inte att använda just nu.";
   }
   if (/quota|rate|429/i.test(raw)) {
@@ -307,6 +394,11 @@ function AIPanel({
   modelOptions,
   selectedModel,
   onSelectModel,
+  interpretKind,
+  onSelectInterpretKind,
+  interpretKindOptions,
+  runtimeNote,
+  verificationOk,
   onGenerate,
 }: {
   expanded: boolean;
@@ -319,6 +411,11 @@ function AIPanel({
   modelOptions: InterpretModelOption[];
   selectedModel: string;
   onSelectModel: (modelId: string) => void;
+  interpretKind: InterpretKind;
+  onSelectInterpretKind: (kind: InterpretKind) => void;
+  interpretKindOptions: { id: InterpretKind; label: string }[];
+  runtimeNote?: string | null;
+  verificationOk?: boolean;
   onGenerate: () => void;
 }) {
   const errorDisplay = error ? humanizeAIError(error) : null;
@@ -357,6 +454,26 @@ function AIPanel({
 
             <div className="rounded-xl border border-border/70 bg-background/70 p-3">
               <label className="block text-xs uppercase tracking-wider text-muted-foreground font-body mb-2">
+                Tolkningstyp
+              </label>
+              <select
+                value={interpretKind}
+                onChange={(event) => onSelectInterpretKind(event.target.value as InterpretKind)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-body text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary"
+              >
+                {interpretKindOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-muted-foreground font-body leading-relaxed">
+                Styr hur AI:n läser texten (dröm, dikt, relation …). Postens arkivkategori är bara ett förval — du kan byta här.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <label className="block text-xs uppercase tracking-wider text-muted-foreground font-body mb-2">
                 Modell
               </label>
               <select
@@ -368,12 +485,22 @@ function AIPanel({
                 {modelOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
+                    {option.runtime_available === false ? " (ej verifierad)" : ""}
                   </option>
                 ))}
               </select>
               <p className="mt-2 text-xs text-muted-foreground font-body leading-relaxed">
                 {activeModel?.description ?? "Välj vilken modell som ska användas för tolkningen."}
               </p>
+              {runtimeNote && (
+                <p
+                  className={`mt-2 text-[11px] leading-relaxed font-body ${
+                    verificationOk ? "text-muted-foreground" : "text-amber-700 dark:text-amber-500/90"
+                  }`}
+                >
+                  {runtimeNote}
+                </p>
+              )}
             </div>
 
             <p className="text-xs text-muted-foreground font-body leading-relaxed">
@@ -406,19 +533,36 @@ function AIPanel({
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
-                  Modell: {interpretation.model_used}
+                  Tolkning: {interpretation.contract.label}
                 </span>
                 <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
-                  Kontrakt: {interpretation.contract.label}
+                  Begärd modell: {interpretation.requested_model ?? "standard (backend)"}
+                </span>
+                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
+                  Använd modell: {interpretation.used_model}
+                </span>
+                {interpretation.fallback_used && (
+                  <span
+                    className="rounded-full border border-amber-600/40 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-800 dark:text-amber-200 font-body"
+                    title={interpretation.fallback_reason ?? undefined}
+                  >
+                    Annan modell-id från leverantör
+                  </span>
+                )}
+                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
+                  Leverantör: {interpretation.provider}
                 </span>
               </div>
-              <div className="space-y-3">
+              {interpretation.contract_degraded && (
+                <p className="text-[11px] text-muted-foreground font-body leading-relaxed">
+                  Vissa avsnitt kompletterades automatiskt så att läsningen ska hålla ihop.
+                </p>
+              )}
+              <div className="space-y-5">
                 {interpretation.sections.map((section) => (
-                  <div key={section.id} className="rounded-xl border border-border/70 bg-background/70 p-3">
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-body">
-                      {section.title}
-                    </p>
-                    <p className="mt-2 whitespace-pre-line text-sm text-surface-foreground font-body leading-relaxed">
+                  <div key={section.id} className="rounded-xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-sm font-medium text-foreground font-body">{section.title}</p>
+                    <p className="mt-3 whitespace-pre-line text-sm text-surface-foreground font-body leading-relaxed">
                       {section.content}
                     </p>
                   </div>

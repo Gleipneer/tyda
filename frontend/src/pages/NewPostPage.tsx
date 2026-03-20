@@ -187,7 +187,6 @@ export default function NewPostPage() {
     if (!activeUser || !title.trim() || !content.trim() || categoryId === null) return;
 
     createMutation.mutate({
-      anvandar_id: activeUser.anvandar_id,
       kategori_id: categoryId,
       titel: title.trim(),
       innehall: content.trim(),

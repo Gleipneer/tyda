@@ -17,7 +17,7 @@ export default function ActivityPage() {
   });
   const { data: posts = [] } = useQuery({
     queryKey: ["my-posts-activity", activeUser?.anvandar_id],
-    queryFn: () => fetchPosts({ anvandarId: activeUser!.anvandar_id }),
+    queryFn: () => fetchPosts(),
     enabled: !!activeUser,
   });
 
@@ -25,19 +25,14 @@ export default function ActivityPage() {
     () => new Map(posts.map((post) => [post.post_id, post.titel])),
     [posts]
   );
-  const postIds = useMemo(() => new Set(posts.map((post) => post.post_id)), [posts]);
-  const filteredActivity = useMemo(
-    () => activity.filter((entry) => postIds.has(entry.post_id)),
-    [activity, postIds]
-  );
   const groupedActivity = useMemo(() => {
-    const grouped = new Map<string, typeof filteredActivity>();
-    filteredActivity.forEach((entry) => {
+    const grouped = new Map<string, typeof activity>();
+    activity.forEach((entry) => {
       const day = new Date(entry.tidpunkt).toLocaleDateString("sv-SE", { dateStyle: "long" });
       grouped.set(day, [...(grouped.get(day) ?? []), entry]);
     });
     return Array.from(grouped.entries());
-  }, [filteredActivity]);
+  }, [activity]);
 
   return (
     <AppLayout>
@@ -51,7 +46,7 @@ export default function ActivityPage() {
           <p className="text-sm text-muted-foreground font-body">Laddar aktivitet...</p>
         ) : error ? (
           <p className="text-sm text-muted-foreground font-body">Kunde inte hämta aktivitetsloggen.</p>
-        ) : filteredActivity.length === 0 ? (
+        ) : activity.length === 0 ? (
           <p className="text-sm text-muted-foreground font-body">Ingen aktivitet finns loggad ännu.</p>
         ) : (
           <div className="space-y-6">

@@ -7,7 +7,7 @@ import { createUser, loginUser } from "@/services/users";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 
 export default function LandingPage() {
-  const { activeUser, setActiveUser } = useActiveUser();
+  const { activeUser, setSession } = useActiveUser();
   const location = useLocation();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [formError, setFormError] = useState<string | null>(null);
@@ -22,8 +22,8 @@ export default function LandingPage() {
 
   const loginMutation = useMutation({
     mutationFn: () => loginUser(loginId.trim(), loginPassword),
-    onSuccess: (user) => {
-      setActiveUser(user);
+    onSuccess: (data) => {
+      setSession(data.user, data.access_token);
       setFormError(null);
     },
     onError: () => {
@@ -38,8 +38,8 @@ export default function LandingPage() {
         epost: email.trim(),
         losenord: regPassword,
       }),
-    onSuccess: (user) => {
-      setActiveUser(user);
+    onSuccess: (data) => {
+      setSession(data.user, data.access_token);
       setFormError(null);
     },
     onError: (error: Error) => {

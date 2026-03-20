@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   PlusCircle,
+  Shield,
   User,
   X,
 } from "lucide-react";
@@ -46,6 +47,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           { to: "/analytics", label: "Analys", icon: BarChart3 },
         ]
       : []),
+    ...(activeUser?.ar_admin ? [{ to: "/admin", label: "Adminportal", icon: Shield }] : []),
     { to: "/about", label: "Om Tyda", icon: HelpCircle },
   ];
 
@@ -125,6 +127,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
+            {activeUser?.ar_admin ? (
+              <Link
+                to="/admin"
+                className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-xs font-body font-medium text-amber-950 dark:text-amber-100 hover:bg-amber-500/25 transition-colors"
+              >
+                <Shield className="h-3.5 w-3.5 shrink-0" />
+                Adminportal
+              </Link>
+            ) : null}
             {activeUser ? (
               <div className="flex items-center gap-2 rounded-full border border-sidebar-border/80 bg-sidebar-accent/70 px-2 py-1.5">
                 <div className="min-w-0 px-1">
@@ -177,7 +188,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
 
-        <div className="hidden border-t border-sidebar-border/70 lg:block">
+        {/* Sekundärnav: md+ (tidigare bara lg+ → Admin/Begrepp syntes inte på många skärmar) */}
+        <div className="hidden border-t border-sidebar-border/70 md:block">
           <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
             <nav className="flex flex-wrap items-center gap-1.5">
               {secondaryNavItems.map((item) => (
@@ -275,6 +287,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       <User className="h-3.5 w-3.5" />
                       Mitt konto
                     </Link>
+                    {activeUser.ar_admin ? (
+                      <Link
+                        to="/admin"
+                        onClick={() => setDrawerOpen(false)}
+                        className="inline-flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-500/15 px-3.5 py-2 text-xs font-body font-medium text-amber-950 dark:text-amber-50"
+                      >
+                        <Shield className="h-3.5 w-3.5" />
+                        Adminportal
+                      </Link>
+                    ) : null}
                     <button
                       type="button"
                       onClick={handleSwitchUser}

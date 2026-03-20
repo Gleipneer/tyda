@@ -12,7 +12,7 @@ export default function AnalyticsPage() {
   const { activeUser } = useActiveUser();
   const { data: posts = [], isLoading: postsLoading } = useQuery({
     queryKey: ["my-posts-analytics", activeUser?.anvandar_id],
-    queryFn: () => fetchPosts({ anvandarId: activeUser!.anvandar_id }),
+    queryFn: () => fetchPosts(),
     enabled: !!activeUser,
   });
 

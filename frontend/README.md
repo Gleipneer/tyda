@@ -4,9 +4,18 @@ React/Vite-frontend för Reflektionsarkiv.
 
 ## Start
 
-Från `frontend/`:
+**Rekommenderat (hela stacken + migrationer):** från projektroten:
 
 ```powershell
+.\scripts\start.ps1
+```
+
+Det installerar beroenden, kör databasmigrationer, startar backend (`127.0.0.1:8000`) och Vite.
+
+**Bara frontend** (om backend redan kör):
+
+```powershell
+cd frontend
 npm install
 npm run dev
 ```
@@ -31,11 +40,11 @@ Frontend kör normalt på `http://localhost:5173` och proxar API-anrop till back
 
 ## Modellval och AI
 
-- Postdetaljen har en modellväljare i AI-panelen
+- Postdetaljen har val av **tolkningstyp** och **modell** i AI-panelen
 - Frontend hämtar tillåtna modeller via `GET /api/interpret/status`
-- Vald modell skickas till `POST /api/posts/{id}/interpret?model=...`
-- Om vald modell inte är tillgänglig faller backend tillbaka till standardmodellen eller returnerar ett begripligt fel
-- Modellistan innehåller nu `gpt-4.1-mini`, `gpt-4.1`, `gpt-4o`, `gpt-5-mini` och `gpt-5`
+- Anrop: `POST /api/posts/{id}/interpret` med JSON-kropp (`model`, `interpret_kind`) — ev. `?model=` för bakåtkompatibilitet
+- Ogiltigt modellnamn ger tydligt fel; metadata visar begärd och faktiskt använd modell
+- Modellistan följer backend (`gpt-4.1-mini`, `gpt-4.1`, `gpt-4o`, `gpt-5-mini`, `gpt-5` m.m.)
 
 ## Testbarhet
 

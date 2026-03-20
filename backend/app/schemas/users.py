@@ -14,8 +14,17 @@ class UserRead(BaseModel):
 
 
 class UserCreate(BaseModel):
-    """Request för att skapa användare."""
+    """Request för att skapa användare (självregistrering, alltid icke-admin)."""
 
     anvandarnamn: str
     epost: str
     losenord: str
+
+
+class AdminUserCreate(BaseModel):
+    """Admin skapar användare; kan sätta administratörsroll."""
+
+    anvandarnamn: str
+    epost: str
+    losenord: str
+    ar_admin: bool = False

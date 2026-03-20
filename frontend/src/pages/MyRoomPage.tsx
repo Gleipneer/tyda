@@ -8,13 +8,14 @@ import PostPreviewCard from "@/components/PostPreviewCard";
 import VisibilityBadge from "@/components/VisibilityBadge";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { fetchPosts } from "@/services/posts";
+import { Shield, LayoutDashboard } from "lucide-react";
 
 export default function MyRoomPage() {
   const { activeUser } = useActiveUser();
   const [filter, setFilter] = useState<"alla" | "privat" | "publik">("alla");
   const { data: posts = [], isLoading, error } = useQuery({
     queryKey: ["my-posts", activeUser?.anvandar_id],
-    queryFn: () => fetchPosts({ anvandarId: activeUser!.anvandar_id }),
+    queryFn: () => fetchPosts(),
     enabled: !!activeUser,
   });
 
@@ -42,6 +43,35 @@ export default function MyRoomPage() {
       </PageHeader>
 
       <div className="mx-auto max-w-5xl space-y-8">
+        {activeUser?.ar_admin ? (
+          <ContentCard className="border-amber-500/35 bg-gradient-to-br from-amber-500/10 to-transparent">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-amber-500/20 p-2.5 text-amber-800 dark:text-amber-200">
+                  <Shield className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-body uppercase tracking-wider text-amber-800/80 dark:text-amber-200/80">
+                    Administratör
+                  </p>
+                  <h2 className="mt-1 text-lg font-display font-semibold text-foreground">Adminportal</h2>
+                  <p className="mt-1 max-w-xl text-sm font-body text-muted-foreground">
+                    Hantera användare, alla poster och begrepp i lexikonet. Samma funktioner finns också som knapp{" "}
+                    <strong className="text-foreground">Adminportal</strong> uppe till höger.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/admin"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-body font-medium text-white hover:bg-amber-600/90 dark:bg-amber-500 dark:text-amber-950 dark:hover:bg-amber-400"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Öppna översikt
+              </Link>
+            </div>
+          </ContentCard>
+        ) : null}
+
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr),320px]">
           <ContentCard padding="lg" className="bg-card/98">
             <p className="mb-3 text-xs font-body uppercase tracking-wider text-muted-foreground">Överblick</p>

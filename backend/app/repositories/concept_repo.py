@@ -40,6 +40,12 @@ def delete_concept(concept_id: int) -> int:
         return cursor.rowcount
 
 
+def count_begrepp() -> int:
+    with get_cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) AS c FROM Begrepp")
+        return int(cursor.fetchone()["c"])
+
+
 def get_concepts_by_post_id(post_id: int):
     """Hämtar begrepp kopplade till en post."""
     with get_cursor() as cursor:
@@ -83,3 +89,14 @@ def delete_post_concept(post_begrepp_id: int) -> int:
     with get_cursor() as cursor:
         cursor.execute("DELETE FROM PostBegrepp WHERE PostBegreppID = %s", (post_begrepp_id,))
         return cursor.rowcount
+
+
+def get_post_id_for_post_begrepp(post_begrepp_id: int) -> int | None:
+    """PostID för en PostBegrepp-rad, eller None."""
+    with get_cursor() as cursor:
+        cursor.execute(
+            "SELECT PostID FROM PostBegrepp WHERE PostBegreppID = %s",
+            (post_begrepp_id,),
+        )
+        row = cursor.fetchone()
+        return int(row["PostID"]) if row else None

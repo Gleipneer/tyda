@@ -18,8 +18,8 @@ Om allt finns installerat och dina databasuppgifter fungerar kommer skriptet att
 - skapa Python-venv om den saknas
 - installera backendpaket om de saknas eller har andrats
 - installera frontendpaket om de saknas eller har andrats
-- skapa databasen fran `reflektionsarkiv.sql` om den saknas
-- kora migrationerna
+- skapa databasen fran `reflektionsarkiv.sql` om den saknas (krav: `mysql` i PATH)
+- **kora databasmigrationer automatiskt** (lexikon + schema; alltid via Python, se `database/migrations/README.md`)
 - starta backend pa `http://127.0.0.1:8000`
 - starta frontend pa `http://localhost:5173`
 
@@ -29,7 +29,7 @@ Om allt finns installerat och dina databasuppgifter fungerar kommer skriptet att
 - Node.js 20 eller nyare
 - npm
 - MySQL
-- `mysql`-klienten i PATH
+- `mysql`-klienten i PATH (behovs bara for **forsta** automatiska import av `reflektionsarkiv.sql`; sjalva migrationerna kors med Python och kraver bara att MySQL-servern svarar enligt `.env`)
 
 ## Forsta gangen: kontrollera `backend/.env`
 

@@ -10,7 +10,9 @@ Från projektroten:
 .\scripts\start.ps1
 ```
 
-Det startar backend på `http://127.0.0.1:8000` och frontend på `http://localhost:5173`.
+Skriptet sätter upp venv/npm vid behov, försöker skapa databasen från `reflektionsarkiv.sql` om `mysql`-klient finns, **kör alltid databasmigrationer** (`backend/scripts/run_migration_utf8.py` — lexikon + schema), startar sedan backend på `http://127.0.0.1:8000` och frontend på `http://localhost:5173`.
+
+På Mac/Linux: `./scripts/start.sh` (samma beteende).
 
 Snabb kontroll:
 
@@ -50,9 +52,9 @@ För att logga ut:
 
 Viktigt:
 
-- inloggning verifieras mot databasen (`POST /api/auth/login`); lösenord lagras som bcrypt-hash
-- aktiv användarprofil sparas lokalt i webbläsaren (utan server-side sessionstoken i denna version)
-- API-anrop för att skapa poster skickar fortfarande `anvandar_id` från klienten – i produktion skulle det kopplas till en riktig session
+- inloggning verifieras mot databasen (`POST /api/auth/login`); lösenord lagras som **bcrypt-hash** i `LosenordHash` (salt ingår i hash-strängen; aldrig klartext)
+- vid lyckad inloggning returneras en **JWT** (Bearer); frontend sparar token lokalt och skickar `Authorization: Bearer …` på skyddade API-anrop
+- poster skapas/uppdateras med JWT: backend sätter ägare från token (`AnvandarID` i databasen), inte från godtycklig klientparameter
 
 ## 4. Skrivflödet
 
@@ -118,15 +120,16 @@ Jag drömde om en orm i mörkt vatten. Jag gick mot ett tempel vid stranden.
    - posten syns inte i `Utforska`
    - `Aktivitet` uppdateras efter att posten skapats
 
-## 6. AI-tolkning och modellval
+## 6. AI-tolkning, tolkningstyp och modellval
 
-På postdetaljen:
+På postdetaljen (eget rum, privat post):
 
 - öppna panelen `AI-tolkning`
-- välj modell i fältet `Modell`
+- välj **tolkningstyp** (dröm, dikt, text, symbol, händelse, relation, fri tolkning m.m.) — postens kategori är bara **förval**, du kan ändra innan du genererar
+- välj **modell**
 - klicka `Generera tolkning`
 
-Tillåtna modeller i nuvarande backend:
+Tillåtna modell-id i backend (måste matcha lista i kod + ev. OpenAI-konto):
 
 - `gpt-4.1-mini`
 - `gpt-4.1`
@@ -134,16 +137,18 @@ Tillåtna modeller i nuvarande backend:
 - `gpt-5-mini`
 - `gpt-5`
 
-Så fungerar valet:
+Så fungerar anropet:
 
-- frontend hämtar valbara modeller från `GET /api/interpret/status`
-- vald modell skickas till `POST /api/posts/{post_id}/interpret?model=...`
-- om modellen inte är tillgänglig används backendens standardmodell eller så visas ett begripligt fel
+- frontend hämtar modellista från `GET /api/interpret/status` (försöker verifiera mot OpenAI `models.list`; om det misslyckas visas alla konfigurerade modeller med en tydlig notis)
+- tolkning anropas med `POST /api/posts/{post_id}/interpret` och JSON-kropp, t.ex. `{ "model": "gpt-4.1-mini", "interpret_kind": "dream" }`
+- äldre klienter kan fortfarande skicka `?model=...` som alternativ till `body.model`
+- **ogiltigt modellnamn** ger HTTP 400 med tydligt fel — ingen tyst omdirigering till annan modell
+- svaret innehåller metadata: `requested_model`, `used_model` (från leverantören), `fallback_used` om leverantörens modell-id skiljer sig från det beställda, `provider`, `contract_degraded` om sektioner kompletterats
 
-Byt standardmodell i backend:
+Byt standardmodell när användaren inte väljer:
 
 1. öppna `backend/.env`
-2. sätt `OPENAI_MODEL` till en av de tillåtna modellerna ovan
+2. sätt `OPENAI_MODEL` till ett **stött** modell-id (se listan ovan)
 3. starta om backend
 
 Exempel:
@@ -151,6 +156,11 @@ Exempel:
 ```env
 OPENAI_MODEL=gpt-4.1-mini
 ```
+
+Manuell kontroll:
+
+1. välj modell A, generera — kontrollera att `used_model` motsvarar det du förväntar dig
+2. välj en ogiltig modell via API — ska ge 400, inte tyst byte
 
 ## 7. Testbarhet just nu
 

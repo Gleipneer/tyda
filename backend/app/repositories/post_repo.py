@@ -140,3 +140,9 @@ def delete_post(post_id: int) -> int:
     with get_cursor() as cursor:
         cursor.execute("DELETE FROM Poster WHERE PostID = %s", (post_id,))
         return cursor.rowcount
+
+
+def count_posts() -> int:
+    with get_cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) AS c FROM Poster")
+        return int(cursor.fetchone()["c"])

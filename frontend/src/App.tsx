@@ -16,6 +16,12 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import ActivityPage from "./pages/ActivityPage";
 import AboutDatabasePage from "./pages/AboutDatabasePage";
 import NotFound from "./pages/NotFound";
+import RequireAdmin from "@/components/RequireAdmin";
+import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminPostsPage from "./pages/admin/AdminPostsPage";
+import AdminConceptsPage from "./pages/admin/AdminConceptsPage";
+import EditPostPage from "./pages/EditPostPage";
 
 const queryClient = new QueryClient();
 
@@ -39,8 +45,41 @@ const App = () => (
             <Route path="/utforska" element={<ExplorePage />} />
             <Route path="/utforska/:id" element={<PostDetailPage />} />
             <Route path="/posts" element={<RequireActiveUser><PostsPage /></RequireActiveUser>} />
+            <Route path="/posts/:id/edit" element={<RequireActiveUser><EditPostPage /></RequireActiveUser>} />
             <Route path="/posts/:id" element={<RequireActiveUser><PostDetailPage /></RequireActiveUser>} />
             <Route path="/new-post" element={<RequireActiveUser><NewPostPage /></RequireActiveUser>} />
+            <Route
+              path="/admin"
+              element={
+                <RequireAdmin>
+                  <AdminOverviewPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/anvandare"
+              element={
+                <RequireAdmin>
+                  <AdminUsersPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/poster"
+              element={
+                <RequireAdmin>
+                  <AdminPostsPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/begrepp"
+              element={
+                <RequireAdmin>
+                  <AdminConceptsPage />
+                </RequireAdmin>
+              }
+            />
             <Route path="/concepts" element={<ConceptsPage />} />
             <Route path="/analytics" element={<RequireActiveUser><AnalyticsPage /></RequireActiveUser>} />
             <Route path="/activity" element={<RequireActiveUser><ActivityPage /></RequireActiveUser>} />

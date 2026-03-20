@@ -221,10 +221,14 @@ function Install-FrontendDependencies() {
     }
 }
 
-function Initialize-DatabaseReady() {
+function Initialize-DatabaseOptionalImport() {
+    <#
+    Forsok skapa databas fran reflektionsarkiv.sql om den saknas (krav: mysql-klient).
+    Migrationer kors alltid separat via Invoke-DatabaseMigrations.
+    #>
     $mysql = Get-CommandPath @("mysql.exe", "mysql")
     if (-not $mysql) {
-        Write-Host "[Databas] mysql-klienten hittades inte. Hoppar over automatisk import." -ForegroundColor Yellow
+        Write-Host "[Databas] mysql-klient saknas — hoppar over automatisk skapande (kor migrationer nedan om DB redan finns)." -ForegroundColor Yellow
         return
     }
 
@@ -246,7 +250,7 @@ function Initialize-DatabaseReady() {
 
         $dbExists = & $mysql @queryArgs 2>$null
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "[Databas] Kunde inte verifiera databasen via mysql-klienten. Fortsatter och later backend ge tydligt fel om DB saknas." -ForegroundColor Yellow
+            Write-Host "[Databas] Kunde inte verifiera databas via mysql-klient. Fortsatter — skapa DB manuellt om den saknas." -ForegroundColor Yellow
             return
         }
 
@@ -257,9 +261,6 @@ function Initialize-DatabaseReady() {
                 Stop-WithMessage "Automatisk import av reflektionsarkiv.sql misslyckades. Kontrollera DB_HOST, DB_USER och DB_PASSWORD i backend\.env."
             }
         }
-
-        Write-Host "[Databas] Kor migrationer..." -ForegroundColor Yellow
-        Invoke-Checked $VenvPython @("scripts/run_migration_utf8.py") $BackendDir "Migrering av databasen"
     } finally {
         if ($null -ne $previousPwd) {
             $env:MYSQL_PWD = $previousPwd
@@ -269,10 +270,20 @@ function Initialize-DatabaseReady() {
     }
 }
 
+function Invoke-DatabaseMigrations() {
+    <#
+    Kor alltid efter venv: schema_migrations + lexikon (001-016).
+    Kraver att MySQL finns och att backend\.env ar korrekt.
+    #>
+    Write-Host "[Databas] Kor migrationer (Python, UTF-8)..." -ForegroundColor Yellow
+    Invoke-Checked $VenvPython @("scripts/run_migration_utf8.py") $BackendDir "Migrering av databasen"
+}
+
 Copy-IfMissing $BackendEnvExamplePath $BackendEnvPath "Backend"
 Initialize-BackendVenv
 Install-FrontendDependencies
-Initialize-DatabaseReady
+Initialize-DatabaseOptionalImport
+Invoke-DatabaseMigrations
 
 Stop-BackendProcesses $BackendPort $BackendDir
 Stop-FrontendProcesses $FrontendPort $FrontendDir

@@ -38,9 +38,8 @@ class PostDetail(PostListItem):
 
 
 class PostCreate(BaseModel):
-    """Request för att skapa post."""
+    """Request för att skapa post (ägare = inloggad användare)."""
 
-    anvandar_id: int
     kategori_id: int
     titel: str
     innehall: str

@@ -5,13 +5,23 @@ export interface User {
   anvandarnamn: string;
   epost: string;
   skapad_datum?: string;
-  ar_admin?: boolean;
+  ar_admin: boolean;
 }
 
-export function loginUser(identifier: string, password: string): Promise<User> {
-  return post<User>("/auth/login", { identifier, password });
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
 }
 
-export function createUser(data: { anvandarnamn: string; epost: string; losenord: string }): Promise<User> {
-  return post<User>("/users", data);
+export function loginUser(identifier: string, password: string): Promise<TokenResponse> {
+  return post<TokenResponse>("/auth/login", { identifier, password });
+}
+
+export function fetchMe(): Promise<User> {
+  return get<User>("/auth/me");
+}
+
+export function createUser(data: { anvandarnamn: string; epost: string; losenord: string }): Promise<TokenResponse> {
+  return post<TokenResponse>("/users", data);
 }

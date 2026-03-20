@@ -22,7 +22,7 @@ På Mac/Linux: `./scripts/start.sh` (kräver `chmod +x scripts/start.sh` första
 
 Ny i projektet? Las `KOMPANJON.md` i projektroten for en steg-for-steg-guide.
 
-Skriptet frigör port 8000 och 5173 om de är upptagna, startar backend i bakgrunden och frontend i förgrunden. Backend: http://127.0.0.1:8000, Frontend: http://localhost:5173.
+Skriptet frigör port 8000 och 5173 om de är upptagna, **kör databasmigrationer automatiskt** (lexikon + schema via `backend/scripts/run_migration_utf8.py`), startar backend i bakgrunden och frontend i förgrunden. Backend: http://127.0.0.1:8000, Frontend: http://localhost:5173.
 
 ---
 
@@ -36,14 +36,26 @@ Se till att MySQL körs. Skapa databasen:
 mysql -u root -p < reflektionsarkiv.sql
 ```
 
-### 2. Migrationer (utökar begreppsbiblioteket)
+### 2. Migrationer (lexikon + schema)
 
-Kör från `backend/`-katalogen så att `.env` laddas:
+Migrationerna ligger i `database/migrations/` och körs **i ordning** via `backend/scripts/run_migration_utf8.py` (UTF-8, spårning i **`schema_migrations`**).
 
-```bash
+**Vid `.\scripts\start.ps1` / `./scripts/start.sh` körs migrationer automatiskt** efter venv/npm — du behöver normalt inte köra dem manuellt.
+
+Manuellt (samma som startskriptet anropar):
+
+```powershell
 cd backend
-python scripts/run_migration_utf8.py
+.\venv\Scripts\python.exe scripts\run_migration_utf8.py
 ```
+
+**Om du får duplicate key på `Begrepp`** (äldre DB utan spårning):
+
+```powershell
+.\venv\Scripts\python.exe scripts\run_migration_utf8.py --legacy-bootstrap
+```
+
+Mer detaljer: `database/migrations/README.md`.
 
 ### 3. Backend
 
@@ -90,7 +102,8 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 
 - `GET /api/health` – backend igång
 - `GET /api/db-health` – databasanslutning
-- `POST /api/auth/login` – inloggning (`identifier` + `password`; se `docs/INLOGGNING_DEMO.md`)
+- `POST /api/auth/login` – inloggning (`identifier` + `password`; returnerar JWT + användare; se `docs/INLOGGNING_DEMO.md`)
+- `GET /api/auth/me` – nuvarande användare (Bearer-token)
 - `POST /api/users` – skapa konto (`anvandarnamn`, `epost`, `losenord` minst 8 tecken)
 - `GET /api/users/{id}` – en användare
 - `GET /api/categories` – kategorier
@@ -153,7 +166,7 @@ Index finns där appen filtrerar och joinar: Poster (AnvandarID, KategoriID, Ska
 - Inloggning: `POST /api/auth/login` jämför lösenord mot **bcrypt-hash** i `Anvandare.LosenordHash`. Demo-konton: `docs/INLOGGNING_DEMO.md`.
 - Begränsat databaskonto via `grants.sql`.
 - Constraints: NOT NULL, ENUM, UNIQUE, FOREIGN KEY, CHECK (titel får inte vara tom).
-- **Känd begränsning:** skriv-API (t.ex. skapa post) litar fortfarande på `anvandar_id` från klienten; riktig produktion kräver session/JWT kopplad till inloggning.
+- **Behörighet:** poster skapas/uppdateras/raderas med **JWT** (`Authorization: Bearer`). Ägarskap och admin (`ArAdmin`) kontrolleras i backend. **Adminportal:** se [`docs/ADMIN_PORTAL.md`](docs/ADMIN_PORTAL.md). Miljövariabler för JWT: `backend/.env.example`.
 
 ## Dokumentation
 

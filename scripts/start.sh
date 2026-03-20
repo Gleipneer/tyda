@@ -121,9 +121,9 @@ ensure_frontend_deps() {
     fi
 }
 
-ensure_database_ready() {
+ensure_database_optional_import() {
     if ! command -v mysql >/dev/null 2>&1; then
-        echo "[Databas] mysql-klienten hittades inte. Hoppar over automatisk import."
+        echo "[Databas] mysql-klient saknas — hoppar over automatisk skapande (migrationer kors nedan om DB redan finns)."
         return
     fi
 
@@ -144,14 +144,10 @@ ensure_database_ready() {
 
     local db_exists
     if ! db_exists="$(mysql "${mysql_args[@]}" --batch --skip-column-names -e "SHOW DATABASES LIKE '$db_name';" 2>/dev/null)"; then
-        echo "[Databas] Kunde inte verifiera databasen via mysql-klienten. Fortsatter och later backend ge tydligt fel om DB saknas."
-    else
-        if [ "$(printf "%s" "$db_exists" | tr -d '\r\n')" != "$db_name" ]; then
-            echo "[Databas] Skapar databasen fran reflektionsarkiv.sql..."
-            mysql "${mysql_args[@]}" < "$REFLEKTIONSARKIV_SQL" || fail "Automatisk import av reflektionsarkiv.sql misslyckades."
-        fi
-        echo "[Databas] Kor migrationer..."
-        (cd "$BACKEND_DIR" && "$VENV_PYTHON" scripts/run_migration_utf8.py) || fail "Migrering av databasen misslyckades."
+        echo "[Databas] Kunde inte verifiera databas via mysql-klient. Fortsatter — skapa DB manuellt om den saknas."
+    elif [ "$(printf "%s" "$db_exists" | tr -d '\r\n')" != "$db_name" ]; then
+        echo "[Databas] Skapar databasen fran reflektionsarkiv.sql..."
+        mysql "${mysql_args[@]}" < "$REFLEKTIONSARKIV_SQL" || fail "Automatisk import av reflektionsarkiv.sql misslyckades."
     fi
 
     if [ -n "$old_mysql_pwd" ]; then
@@ -159,6 +155,11 @@ ensure_database_ready() {
     else
         unset MYSQL_PWD || true
     fi
+}
+
+invoke_database_migrations() {
+    echo "[Databas] Kor migrationer (Python, UTF-8)..."
+    (cd "$BACKEND_DIR" && "$VENV_PYTHON" scripts/run_migration_utf8.py) || fail "Migrering av databasen misslyckades."
 }
 
 kill_port() {
@@ -190,7 +191,8 @@ wait_for_http() {
 ensure_backend_env
 ensure_backend_venv
 ensure_frontend_deps
-ensure_database_ready
+ensure_database_optional_import
+invoke_database_migrations
 
 kill_port "$BACKEND_PORT"
 kill_port "$FRONTEND_PORT"

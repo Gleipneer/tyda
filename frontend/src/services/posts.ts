@@ -2,13 +2,14 @@ import { get, post, put, del } from "./api";
 import type { Post, PostCreate } from "@/types/posts";
 
 interface FetchPostsOptions {
+  /** Endast admin: filtrera på användare */
   anvandarId?: number;
   synlighet?: "privat" | "publik";
 }
 
 export function fetchPosts(options?: FetchPostsOptions): Promise<Post[]> {
   const params = new URLSearchParams();
-  if (options?.anvandarId) params.set("anvandar_id", String(options.anvandarId));
+  if (options?.anvandarId != null) params.set("anvandar_id", String(options.anvandarId));
   if (options?.synlighet) params.set("synlighet", options.synlighet);
   const qs = params.toString();
   return get<Post[]>(`/posts${qs ? `?${qs}` : ""}`);
@@ -18,9 +19,8 @@ export function fetchPublicPosts(): Promise<Post[]> {
   return get<Post[]>("/posts/public");
 }
 
-export function fetchPost(id: number, viewerUserId?: number): Promise<Post> {
-  const qs = viewerUserId ? `?viewer_user_id=${viewerUserId}` : "";
-  return get<Post>(`/posts/${id}${qs}`);
+export function fetchPost(id: number): Promise<Post> {
+  return get<Post>(`/posts/${id}`);
 }
 
 export function fetchPublicPost(id: number): Promise<Post> {

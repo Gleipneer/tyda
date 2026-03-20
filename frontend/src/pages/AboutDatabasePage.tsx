@@ -173,7 +173,7 @@ export default function AboutDatabasePage() {
         <h2 className="text-xl font-display font-semibold text-foreground mb-3">Det viktigaste först</h2>
         <div className="grid gap-4 lg:grid-cols-3">
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            Databasen är medvetet liten: 6 tabeller, 2 triggers och 1 lagrad procedur. Tyngre matchning och AI-logik ligger i backend, inte i schemat.
+            Databasen är medvetet liten: 6 tabeller, 2 triggers och 1 lagrad procedur. Tyngre matchning och AI-tolkning ligger i backend, inte i schemat. Inloggning använder JWT mot API; lösenord lagras endast som bcrypt-hash.
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
             ER-diagrammet visar tabeller, kolumner och relationer. Mer beskrivning per tabell finns under &quot;Tabeller&quot;. `PostBegrepp` är den verkliga många-till-många-tabellen; automatisk begreppsmatchning räknas i backend och sparas inte där.
@@ -265,7 +265,7 @@ export default function AboutDatabasePage() {
               Automatisk begreppsmatchning lagras inte direkt i databasen. Den räknas fram i backend när text analyseras. Bara manuella kopplingar sparas i `PostBegrepp`.
             </p>
             <p>
-              AI-tolkningen läser postens text, de automatiskt matchade begreppen och de manuellt kopplade begreppen. Själva AI-svaret sparas inte i databasen.
+              AI-tolkningen läser postens text, automatiskt matchade begrepp och manuellt kopplade begrepp. Svaret sparas inte i databasen. I gränssnittet väljer du själv <strong>tolkningstyp</strong> (t.ex. dröm, dikt, relation) — postens kategori är bara ett förval. Modellval och faktiskt använd modell visas i metadata; ogiltiga modellnamn ger fel, inte tyst byte.
             </p>
             <p>
               `AktivitetLogg` är en enkel poster-logg: skapande och ändringar av titel/innehåll/synlighet/kategori. Automatchning och AI-svar skrivs inte hit.
@@ -356,7 +356,7 @@ export default function AboutDatabasePage() {
               <div>
                 <h4 className="font-medium text-foreground mb-1">AI-tolkning</h4>
                 <p className="text-muted-foreground leading-relaxed">
-                  AI får texten från posten plus begreppsunderlaget. Den använder alltså databasen som källa, men AI-svaret blir en separat reflektion ovanpå datan och sparas inte tillbaka i databasen.
+                  AI får postens text och begreppsunderlag. Tolkningen är ett <strong>stöd för reflektion</strong> med varsamt språk (möjliga läsningar, inte facit). Kontraktet utgår från människans inre liv — känslor, relationer, konflikter, längtan — utan diagnoser. Du väljer tolkningstyp och modell; svaret struktureras i läsbara avsnitt. Metadata visar begärd modell, leverantörens modell-id och om svaret kompletterats när modellen inte följt formatet fullt ut.
                 </p>
               </div>
             </div>

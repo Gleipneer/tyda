@@ -20,8 +20,8 @@ export interface Post {
   kategori: CategoryRef;
 }
 
+/** Skapa post – ägare sätts av backend från JWT. */
 export interface PostCreate {
-  anvandar_id: number;
   kategori_id: number;
   titel: string;
   innehall: string;

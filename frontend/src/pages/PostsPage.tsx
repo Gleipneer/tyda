@@ -13,7 +13,7 @@ export default function PostsPage() {
   const [filter, setFilter] = useState<"alla" | "privat" | "publik">("alla");
   const { data: posts, isLoading, error } = useQuery({
     queryKey: ["my-posts-list", activeUser?.anvandar_id],
-    queryFn: () => fetchPosts({ anvandarId: activeUser!.anvandar_id }),
+    queryFn: () => fetchPosts(),
     enabled: !!activeUser,
   });
 
