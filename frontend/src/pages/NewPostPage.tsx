@@ -13,6 +13,9 @@ import { matchTypeLabel } from "@/lib/matchTypeLabels";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import VisibilityBadge from "@/components/VisibilityBadge";
 
+/** Samma som Poster.Titel VARCHAR(150) i databasen. */
+const POST_TITLE_MAX_CHARS = 150;
+
 function useDebounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
   const ref = useRef<ReturnType<typeof setTimeout>>();
   const fnRef = useRef(fn);
@@ -261,19 +264,37 @@ export default function NewPostPage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-body font-medium text-foreground">Titel</label>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="post-title"
+                    className="text-sm font-body font-medium text-foreground"
+                  >
+                    Titel
+                  </label>
+                  <span
+                    className={`text-xs font-mono tabular-nums font-body ${
+                      title.length >= POST_TITLE_MAX_CHARS
+                        ? "text-destructive"
+                        : title.length >= 130
+                          ? "text-amber-600 dark:text-amber-500"
+                          : "text-muted-foreground"
+                    }`}
+                    aria-live="polite"
+                    aria-label={`Titel: ${title.length} av ${POST_TITLE_MAX_CHARS} tecken`}
+                  >
+                    {title.length}/{POST_TITLE_MAX_CHARS}
+                  </span>
+                </div>
                 <input
+                  id="post-title"
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ge din post en titel"
-                  maxLength={150}
+                  maxLength={POST_TITLE_MAX_CHARS}
                   className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm font-body text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
                   required
                 />
-                <p className="mt-1 text-xs font-body text-muted-foreground">
-                  {title.length} / 150
-                </p>
               </div>
 
               <div>
