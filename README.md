@@ -102,6 +102,7 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 
 - `GET /api/health` – backend igång
 - `GET /api/db-health` – databasanslutning
+- `GET /api/analyze/chain-status` – diagnostik: antal `Begrepp`, migrationsspårning (samma datakälla som live-matchning)
 - `POST /api/auth/login` – inloggning (`identifier` + `password`; returnerar JWT + användare; se `docs/INLOGGNING_DEMO.md`)
 - `GET /api/auth/me` – nuvarande användare (Bearer-token)
 - `POST /api/users` – skapa konto (`anvandarnamn`, `epost`, `losenord` minst 8 tecken)

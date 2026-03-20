@@ -14,6 +14,7 @@
 | `014` | CHECK på titel |
 | `015` | Auth-kolumner (`LosenordHash`, `ArAdmin`) – hoppas över om de redan finns |
 | `016` | Trigger för uppdaterad post → `AktivitetLogg` – hoppas över om triggern finns |
+| `017` | Material/kropp/staty (t.ex. brons, järn, lera, huvud, staty) för symbolisk text |
 
 **Kör alltid via** `backend/scripts/run_migration_utf8.py` (inte `mysql < fil` på Windows utan UTF-8-hantering).
 

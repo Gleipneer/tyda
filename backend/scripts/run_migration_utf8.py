@@ -38,6 +38,15 @@ MIGRATIONS: tuple[str, ...] = (
     "017_metall_kropp_daniel.sql",
 )
 
+try:
+    from app.migrations_meta import MIGRATION_COUNT as _EXPECTED_MIGRATION_COUNT
+
+    assert len(MIGRATIONS) == _EXPECTED_MIGRATION_COUNT, (
+        f"MIGRATIONS har {len(MIGRATIONS)} filer; uppdatera app/migrations_meta.MIGRATION_COUNT"
+    )
+except ImportError:
+    pass
+
 # Minsta antal rader i Begrepp för att anta att lexikon redan är migrerat (äldre installation utan spårning)
 LEGACY_BEGREPP_THRESHOLD = 80
 

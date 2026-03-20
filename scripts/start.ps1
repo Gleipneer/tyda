@@ -272,7 +272,7 @@ function Initialize-DatabaseOptionalImport() {
 
 function Invoke-DatabaseMigrations() {
     <#
-    Kor alltid efter venv: schema_migrations + lexikon (001-016).
+    Kor alltid efter venv: schema_migrations + lexikon (001-017 m.fl., se run_migration_utf8.py).
     Kraver att MySQL finns och att backend\.env ar korrekt.
     #>
     Write-Host "[Databas] Kor migrationer (Python, UTF-8)..." -ForegroundColor Yellow

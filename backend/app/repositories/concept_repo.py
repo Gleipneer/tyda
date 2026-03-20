@@ -46,6 +46,16 @@ def count_begrepp() -> int:
         return int(cursor.fetchone()["c"])
 
 
+def count_schema_migrations() -> int | None:
+    """Antal körda migrationer i schema_migrations, eller None om tabellen saknas/fel."""
+    try:
+        with get_cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) AS c FROM schema_migrations")
+            return int(cursor.fetchone()["c"])
+    except Exception:
+        return None
+
+
 def get_concepts_by_post_id(post_id: int):
     """Hämtar begrepp kopplade till en post."""
     with get_cursor() as cursor:

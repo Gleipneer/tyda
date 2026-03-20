@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/AppLayout";
@@ -7,23 +7,37 @@ import ContentCard from "@/components/ContentCard";
 import ConceptBadge from "@/components/ConceptBadge";
 import { fetchCategories } from "@/services/categories";
 import { createPost } from "@/services/posts";
-import { analyzeTextConcepts } from "@/services/analyze";
+import { analyzeTextConcepts, fetchAnalyzeChainStatus } from "@/services/analyze";
 import type { MatchedConcept } from "@/services/analyze";
 import { matchTypeLabel } from "@/lib/matchTypeLabels";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import VisibilityBadge from "@/components/VisibilityBadge";
+import { composePostTextForMatch } from "@/lib/matchText";
 
 /** Samma som Poster.Titel VARCHAR(150) i databasen. */
 const POST_TITLE_MAX_CHARS = 150;
 
-function useDebounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
-  const ref = useRef<ReturnType<typeof setTimeout>>();
+/**
+ * Debounce med stabil callback-identitet (samma som ms).
+ * Tidigare useDebounce skapade ny funktion varje render → onödiga dependency-ändringar och svårdebuggad live-analys.
+ */
+function useDebouncedCallback<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
   const fnRef = useRef(fn);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
   fnRef.current = fn;
-  return ((...args: Parameters<T>) => {
-    if (ref.current) clearTimeout(ref.current);
-    ref.current = setTimeout(() => fnRef.current(...args), ms);
-  }) as T;
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    []
+  );
+  return useCallback(
+    (...args: Parameters<T>) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => fnRef.current(...args), ms);
+    },
+    [ms]
+  ) as T;
 }
 
 export default function NewPostPage() {
@@ -36,6 +50,7 @@ export default function NewPostPage() {
   const [visibility, setVisibility] = useState<"privat" | "publik">("privat");
   const [matchedConcepts, setMatchedConcepts] = useState<MatchedConcept[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
 
@@ -45,37 +60,57 @@ export default function NewPostPage() {
     isError: categoriesError,
   } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
 
+  const { data: chainStatus } = useQuery({
+    queryKey: ["analyze-chain-status"],
+    queryFn: fetchAnalyzeChainStatus,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
   const mountedRef = useRef(true);
   useEffect(() => () => {
     mountedRef.current = false;
   }, []);
 
-  const debouncedAnalyze = useDebounce((text: string) => {
+  const debouncedAnalyze = useDebouncedCallback((text: string) => {
     if (!text.trim()) {
       setMatchedConcepts([]);
       setIsAnalyzing(false);
+      setAnalyzeError(null);
       return;
     }
 
     analyzeTextConcepts(text)
       .then((r) => {
         if (mountedRef.current) {
-          setMatchedConcepts(r.matches);
+          const list = r?.matches;
+          setMatchedConcepts(Array.isArray(list) ? list : []);
+          setAnalyzeError(null);
           setIsAnalyzing(false);
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (mountedRef.current) {
           setMatchedConcepts([]);
+          setAnalyzeError(err instanceof Error ? err.message : "Kunde inte nå symbolanalysen (nätverk eller backend).");
           setIsAnalyzing(false);
         }
       });
   }, 400);
 
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setTitle(v);
+    const live = composePostTextForMatch(v, content);
+    setIsAnalyzing(!!live.trim());
+    debouncedAnalyze(live);
+  };
+
   const handleContentChange = (text: string) => {
     setContent(text);
-    setIsAnalyzing(!!text.trim());
-    debouncedAnalyze(text);
+    const live = composePostTextForMatch(title, text);
+    setIsAnalyzing(!!live.trim());
+    debouncedAnalyze(live);
   };
 
   const sortedMatches = [...matchedConcepts].sort((a, b) => b.score - a.score);
@@ -91,9 +126,12 @@ export default function NewPostPage() {
     const normalized = score > 1 ? score : score * 100;
     return `${Math.round(normalized)}%`;
   };
-  const interpretationReadiness = !content.trim()
+  const hasWritableText = !!(title.trim() || content.trim());
+  const interpretationReadiness = !hasWritableText
     ? "Börja skriva så börjar Tyda se mönster."
-    : matchedConcepts.length === 0
+    : analyzeError
+      ? "Live-symbolanalysen svarade inte. Kontrollera backend och nätverk (se röd text nedan)."
+      : matchedConcepts.length === 0
       ? "Texten finns här, men inga tydliga begrepp har fångats ännu."
       : matchedConcepts.length < 3
         ? "Tyda ser några tydliga spår. Fortsätt skriva så blir mönstret klarare."
@@ -119,10 +157,11 @@ export default function NewPostPage() {
       };
 
       if (draft.titel) setTitle(draft.titel);
-      if (draft.innehall) {
-        setContent(draft.innehall);
+      if (draft.innehall) setContent(draft.innehall);
+      const liveFromDraft = composePostTextForMatch(draft.titel ?? "", draft.innehall ?? "");
+      if (liveFromDraft.trim()) {
         setIsAnalyzing(true);
-        debouncedAnalyze(draft.innehall);
+        debouncedAnalyze(liveFromDraft);
       }
       if (typeof draft.kategori_id === "number") setCategoryId(draft.kategori_id);
       if (draft.synlighet) setVisibility(draft.synlighet);
@@ -208,6 +247,7 @@ export default function NewPostPage() {
     setCategoryId(categories[0]?.kategori_id ?? null);
     setVisibility("privat");
     setMatchedConcepts([]);
+    setAnalyzeError(null);
     setDraftSavedAt(null);
     setIsAnalyzing(false);
   };
@@ -288,7 +328,7 @@ export default function NewPostPage() {
                   id="post-title"
                   type="text"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={handleTitleChange}
                   placeholder="Ge din post en titel"
                   maxLength={POST_TITLE_MAX_CHARS}
                   className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm font-body text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
@@ -311,7 +351,11 @@ export default function NewPostPage() {
               <div className="rounded-2xl border border-border/70 bg-surface/50 px-4 py-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs font-body uppercase tracking-wider text-muted-foreground">Tyda ser just nu</span>
-                  {isAnalyzing ? (
+                  {analyzeError ? (
+                    <span className="text-xs font-body text-destructive" title={analyzeError}>
+                      Symbolanalys otillgänglig
+                    </span>
+                  ) : isAnalyzing ? (
                     <span className="text-xs font-body text-primary">Läser texten...</span>
                   ) : matchedConcepts.length > 0 ? (
                     <span className="text-xs font-body text-primary">{matchedConcepts.length} begrepp hittade</span>
@@ -319,6 +363,36 @@ export default function NewPostPage() {
                     <span className="text-xs font-body text-muted-foreground">Väntar på tydliga träffar</span>
                   )}
                 </div>
+                {analyzeError && (
+                  <p className="mt-2 text-xs font-body text-destructive leading-relaxed">
+                    {analyzeError} Kontrollera att backend körs och att du når <code className="rounded bg-muted px-1">POST /api/analyze/text-concepts</code>
+                    {import.meta.env.VITE_API_BASE && (
+                      <> (VITE_API_BASE={String(import.meta.env.VITE_API_BASE)})</>
+                    )}
+                  </p>
+                )}
+                {chainStatus && (
+                  <p className="mt-2 text-[11px] font-body leading-relaxed text-muted-foreground">
+                    <span className="font-medium text-foreground/80">Kedjestatus:</span>{" "}
+                    {!chainStatus.ok ? (
+                      <>databas inte kopplad (GET /api/analyze/chain-status)</>
+                    ) : (
+                      <>
+                        {chainStatus.begrepp_count} begrepp i DB
+                        {chainStatus.schema_migrations_applied != null &&
+                          ` · ${chainStatus.schema_migrations_applied}/${chainStatus.expected_migrations_files} migrationer spårade`}
+                        {chainStatus.lexicon_suspect_incomplete && (
+                          <span className="text-amber-600 dark:text-amber-500">
+                            {" "}
+                            — lexikon/migrationer kan vara ofullständiga; kör{" "}
+                            <code className="rounded bg-muted px-1">python scripts/run_migration_utf8.py</code> i
+                            backend.
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </p>
+                )}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {topMatches.length > 0 ? (
                     topMatches.map((concept) => (
@@ -447,7 +521,9 @@ export default function NewPostPage() {
 
               <div>
                 <p className="mb-2 text-xs font-body uppercase tracking-wider text-muted-foreground">Tydligaste spår</p>
-                {leadingSignals.length > 0 ? (
+                {analyzeError ? (
+                  <p className="text-sm font-body text-destructive">Ingen live-matchning: {analyzeError}</p>
+                ) : leadingSignals.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {leadingSignals.map((signal) => (
                       <span key={signal} className="rounded-full bg-accent px-3 py-1.5 text-sm font-body text-accent-foreground">
@@ -462,7 +538,9 @@ export default function NewPostPage() {
 
               <div>
                 <p className="mb-2 text-xs font-body uppercase tracking-wider text-muted-foreground">Träffar</p>
-                {topMatches.length > 0 ? (
+                {analyzeError ? (
+                  <p className="text-sm font-body text-destructive">Åtgärda felet ovan för att se träffar.</p>
+                ) : topMatches.length > 0 ? (
                   <div className="space-y-2">
                     {topMatches.map((concept) => (
                       <div

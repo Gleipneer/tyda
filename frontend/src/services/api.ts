@@ -1,4 +1,5 @@
-const API_BASE = "/api";
+/** Dev: proxas via Vite. Produktion: sätt VITE_API_BASE om API ligger på annan origin (t.ex. https://api.example.com). */
+const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 /** Synkas med ActiveUserContext – använd setAccessToken/clearAccessToken därifrån. */
 export const ACCESS_TOKEN_KEY = "tyda.accessToken";

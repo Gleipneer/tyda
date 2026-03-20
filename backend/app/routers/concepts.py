@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.deps import CurrentUser, assert_owner_or_admin, get_current_user, get_current_user_optional, require_admin
 from app.repositories import concept_repo, post_repo
+from app.services.match_text import compose_post_text_for_match
 from app.services.symbol_matcher import find_matches
 from app.schemas.concepts import ConceptCreate, ConceptRead, PostConceptCreate, PostConceptRead
 
@@ -80,7 +81,7 @@ def get_matched_concepts(
     post = post_repo.get_post_by_id(post_id)
     if not post or not _can_view_post(user, post):
         raise HTTPException(status_code=404, detail="Post not found")
-    text = f"{post.get('titel', '')} {post.get('innehall', '')}"
+    text = compose_post_text_for_match(post.get("titel"), post.get("innehall"))
     concepts = concept_repo.get_all_concepts()
     matches = find_matches(text, concepts, include_phrases=True)
     return {"matches": matches}
