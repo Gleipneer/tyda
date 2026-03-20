@@ -11,6 +11,7 @@ $BackendEnvPath = Join-Path $BackendDir ".env"
 $BackendEnvExamplePath = Join-Path $BackendDir ".env.example"
 $RequirementsPath = Join-Path $BackendDir "requirements.txt"
 $ReflektionsarkivSqlPath = Join-Path $Root "reflektionsarkiv.sql"
+$GrantsSqlPath = Join-Path $Root "database\scripts\grants.sql"
 $VenvDir = Join-Path $BackendDir "venv"
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 $BackendDepsMarker = Join-Path $VenvDir ".requirements.sha256"
@@ -259,6 +260,13 @@ function Initialize-DatabaseOptionalImport() {
             Get-Content -Raw $ReflektionsarkivSqlPath | & $mysql "--protocol=TCP" "--host=$dbHost" "--port=$dbPort" "--user=$dbUser"
             if ($LASTEXITCODE -ne 0) {
                 Stop-WithMessage "Automatisk import av reflektionsarkiv.sql misslyckades. Kontrollera DB_HOST, DB_USER och DB_PASSWORD i backend\.env."
+            }
+            if (Test-Path $GrantsSqlPath) {
+                Write-Host "[Databas] Tillampar database/scripts/grants.sql (GRANT/REVOKE, least privilege)..." -ForegroundColor Yellow
+                Get-Content -Raw $GrantsSqlPath | & $mysql "--protocol=TCP" "--host=$dbHost" "--port=$dbPort" "--user=$dbUser"
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "[Databas] grants.sql misslyckades (kraver ofta privilegierat konto, t.ex. root). Kor manuellt: mysql -u root -p < database\scripts\grants.sql" -ForegroundColor Yellow
+                }
             }
         }
     } finally {

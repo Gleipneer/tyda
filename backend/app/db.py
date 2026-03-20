@@ -61,3 +61,26 @@ def check_db_connection() -> bool:
             return row is not None and row.get("ok") == 1
     except Exception:
         return False
+
+
+def get_mysql_connection_identity() -> dict[str, str] | None:
+    """
+    Vilket MySQL-konto den anslutna sessionen kör som (för visning/diagnostik).
+    Rättigheter för det kontot sätts i database/scripts/grants.sql (GRANT/REVOKE).
+    """
+    try:
+        with get_cursor() as cursor:
+            cursor.execute("SELECT CURRENT_USER() AS current_user, USER() AS session_user")
+            row = cursor.fetchone()
+            if not row:
+                return None
+            cu = row.get("current_user")
+            su = row.get("session_user")
+            if cu is None and su is None:
+                return None
+            return {
+                "current_user": str(cu) if cu is not None else "",
+                "session_user": str(su) if su is not None else "",
+            }
+    except Exception:
+        return None

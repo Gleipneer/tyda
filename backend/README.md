@@ -23,4 +23,4 @@ Flaggor: `--legacy-bootstrap`, `--mark-only` (se `../database/migrations/README.
 ## API
 
 - Hälsa: `GET /api/health`
-- Databas: `GET /api/db-health`
+- Databas: `GET /api/db-health` (inkl. `mysql_connection_as`, `privilege_script` — se `database/scripts/grants.sql`)

@@ -1,6 +1,6 @@
 # Databassäkerhet: GRANT, REVOKE, admin och Tyda
 
-Det här dokumentet stödjer VG-kravet om **säkerhetsstrategi** (t.ex. begränsa behörigheter med **GRANT** och **REVOKE**). Det kopplar ihop `database/scripts/grants.sql` med hur du loggar in i MySQL – och vad som **inte** finns i Tyda.
+Det här dokumentet stödjer VG-kravet om **säkerhetsstrategi** (t.ex. begränsa behörigheter med **GRANT** och **REVOKE**). Det kopplar ihop `database/scripts/grants.sql` med hur du loggar in i MySQL — och skillnaden mot **applikations**roller (JWT, admin i webben).
 
 ---
 
@@ -14,15 +14,14 @@ Det här dokumentet stödjer VG-kravet om **säkerhetsstrategi** (t.ex. begräns
 
 ---
 
-## Finns en ”adminportal” i Tyda?
+## Webbadmin i Tyda vs MySQL-admin
 
-**Nej – inte som i många VG-exempel (t.ex. e-handel med separat admin-UI).**
+| Vad | Beskrivning |
+|-----|-------------|
+| **Innehållsadmin i webben** | Tyda har routes under `/admin` för inloggade **administratörer** (`ArAdmin=1`). Det styrs av **JWT + `require_admin`** — se `docs/ADMIN_PORTAL.md`. |
+| **MySQL-administration** | Schema, `grants.sql`, migrationer körs med **privilegierat konto** (root / `reflektionsarkiv_admin`). **GRANT/REVOKE** ligger i `database/scripts/grants.sql`. |
 
-- I kurs-PDF:er förekommer ofta en **webbaserad adminportal** för att hantera lager, ordrar eller textfält. Det är ett **generellt exempel**, inte något som automatiskt ska finnas i varje projekt.
-- I **Tyda** finns **ingen** separat webbplats eller route som heter ”admin” för databasen. Administration av MySQL görs med **mysql-klient**, **MySQL Workbench** eller motsvarande, med **root** eller **`reflektionsarkiv_admin`**.
-- Tabellen **`Begrepp`** kan hanteras via befintlig API-/appfunktionalitet där det stöds; det är **applikationsnivå**, inte en dedikerad ”DB-adminportal”.
-
-*(Om VG-dokument kräver visning av **Kommentar TEXT** i admin: den kolumnen finns **inte** längre i `PostBegrepp` – se `VG/VG_ATERSTAENDE.md`.)*
+**VG:s databassäkerhet** = vad **`reflektionsarkiv_app`** får göra i MySQL (definieras i SQL). **Applikations**admin = vem som får anropa API. Verifiera DB-konto: `GET /api/db-health` → `mysql_connection_as`.
 
 ---
 
@@ -82,6 +81,7 @@ mysql -u reflektionsarkiv_app -p reflektionsarkiv
 2. Kör migrationer om du använder dem (samma privilegierade konto).
 3. Kör **`database/scripts/grants.sql`** som **root** (eller annat konto som får `CREATE USER` / `GRANT`).
 4. I **produktion**: sätt `DB_USER=reflektionsarkiv_app` och motsvarande lösenord i `backend/.env`.
+5. Verifiera: `GET /api/db-health` ska visa `mysql_connection_as` = `reflektionsarkiv_app@...` när least privilege används.
 
 ---
 
@@ -91,5 +91,6 @@ PDF:en i `VG/` (t.ex. planering) beskriver ofta **generella** VG-mål: GRANT/REV
 
 - `grants.sql` (app + valfri DB-admin)
 - dokumentation här och i `README.md` under *Säkerhetsstrategi*
+- `GET /api/db-health` visar vilket MySQL-konto backend använder
 
-Avvikelser (t.ex. ingen webb-adminportal, ingen `Kommentar`-kolumn) är **medvetna designval** och ska kunna motiveras muntligt/skriftligt med hänvisning till `VG/VG_ATERSTAENDE.md`.
+Webbaserad **innehållsadmin** finns under `/admin`; den **ersätter inte** GRANT — databasrättigheter för `DB_USER` sätts fortfarande i `grants.sql`.

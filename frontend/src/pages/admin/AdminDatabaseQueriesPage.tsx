@@ -3,14 +3,13 @@ import { useMemo, useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import PageHeader from "@/components/PageHeader";
 import ContentCard from "@/components/ContentCard";
-import { fetchVgQueryCatalog, runVgQuery } from "@/services/admin";
-import type { VgQueryCatalogItem, VgQueryRunResult } from "@/services/admin";
+import { fetchDatabaseQueryCatalog, runDatabaseQuery, type DatabaseQueryRunResult } from "@/services/admin";
 import { Database, Loader2, Play, ScrollText } from "lucide-react";
 
-export default function AdminVgQueriesPage() {
+export default function AdminDatabaseQueriesPage() {
   const { data: catalog = [], isLoading, error } = useQuery({
-    queryKey: ["admin-vg-queries"],
-    queryFn: fetchVgQueryCatalog,
+    queryKey: ["admin-database-queries"],
+    queryFn: fetchDatabaseQueryCatalog,
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -20,19 +19,21 @@ export default function AdminVgQueriesPage() {
   );
 
   const runMutation = useMutation({
-    mutationFn: (id: string) => runVgQuery(id),
+    mutationFn: (id: string) => runDatabaseQuery(id),
   });
 
   return (
     <AdminLayout>
       <PageHeader
-        title="Databasfrågor (VG)"
-        description="Fördefinierade, read-only SQL-frågor mot reflektionsarkivets verkliga tabeller. Välj en fråga till vänster och kör den för att se resultatet — samma SQL som visas körs i backend (whitelist, endast admin)."
+        title="Databasfrågor"
+        description="Fördefinierade, skrivskyddade SQL-frågor mot Tyda:s tabeller. Välj en fråga till vänster och kör den för att se resultatet — samma SQL som visas körs i backend (whitelist, endast administratör)."
       />
 
       {error && (
         <ContentCard className="mb-6 border-destructive/40">
-          <p className="text-sm text-destructive font-body">Kunde inte ladda frågelistan. Är du inloggad som admin?</p>
+          <p className="text-sm text-destructive font-body">
+            Kunde inte ladda frågelistan. {error instanceof Error ? error.message : "Kontrollera nätverk och att API:t nås (t.ex. VITE_API_BASE ska peka på backend med /api-prefix vid separat domän)."}
+          </p>
         </ContentCard>
       )}
 
@@ -132,7 +133,7 @@ export default function AdminVgQueriesPage() {
   );
 }
 
-function ResultTable({ data }: { data: VgQueryRunResult }) {
+function ResultTable({ data }: { data: DatabaseQueryRunResult }) {
   if (data.row_count === 0) {
     return (
       <ContentCard padding="md" className="border-dashed">

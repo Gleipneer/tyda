@@ -1,5 +1,5 @@
 """
-Admin: pedagogisk visning av fördefinierade, read-only SQL-frågor (VG-relevanta).
+Admin: pedagogisk visning av fördefinierade, read-only SQL-frågor.
 
 Ingen fri SQL — endast whitelistade strängar som matchar reflektionsarkiv-schemat.
 """
@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.db import get_cursor
 from app.deps import require_admin
-from app.schemas.admin_vg_queries import VgQueryCatalogItem, VgQueryExecuteResponse
+from app.schemas.admin_database_queries import DatabaseQueryCatalogItem, DatabaseQueryRunResponse
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -38,7 +38,7 @@ def _rows_to_jsonable(rows: list[dict[str, Any]]) -> tuple[list[str], list[dict[
 
 # Whitelist: id -> metadata + exakt SQL (SELECT … eller CALL …)
 # Alla tabeller/kolumner följer reflektionsarkiv.sql
-_VG_QUERIES: list[dict[str, Any]] = [
+_PREDEFINED_DATABASE_QUERIES: list[dict[str, Any]] = [
     {
         "id": "where-kategori-drom",
         "title": "WHERE — poster i kategorin «drom»",
@@ -213,7 +213,6 @@ ORDER BY Kopplingar DESC
         "title": "Lagrad procedur — hamta_poster_per_kategori",
         "description": "Anropar proceduren från reflektionsarkiv.sql med ett fast datumintervall (samma idé som i SQL-filen).",
         "principle": "CALL, GROUP BY (i proceduren)",
-        # Samma anrop som i reflektionsarkiv.sql — inga dynamiska värden från klient
         "sql": "CALL hamta_poster_per_kategori('2024-01-01', '2026-12-31')",
         "kind": "call",
     },
@@ -221,30 +220,30 @@ ORDER BY Kopplingar DESC
 
 
 def _get_query_or_404(query_id: str) -> dict[str, Any]:
-    for q in _VG_QUERIES:
+    for q in _PREDEFINED_DATABASE_QUERIES:
         if q["id"] == query_id:
             return q
     raise HTTPException(status_code=404, detail="Okänd query-id")
 
 
-@router.get("/admin/vg-queries", response_model=list[VgQueryCatalogItem])
-def list_vg_queries():
-    """Lista alla fördefinierade queries (metadata + SQL-text)."""
+@router.get("/admin/database-queries", response_model=list[DatabaseQueryCatalogItem])
+def list_database_queries():
+    """Lista alla fördefinierade frågor (metadata + SQL-text)."""
     return [
-        VgQueryCatalogItem(
+        DatabaseQueryCatalogItem(
             id=q["id"],
             title=q["title"],
             description=q["description"],
             principle=q["principle"],
             sql_text=q["sql"],
         )
-        for q in _VG_QUERIES
+        for q in _PREDEFINED_DATABASE_QUERIES
     ]
 
 
-@router.post("/admin/vg-queries/{query_id}/run", response_model=VgQueryExecuteResponse)
-def run_vg_query(query_id: str):
-    """Kör en whitelistad read-only query och returnerar kolumner + rader."""
+@router.post("/admin/database-queries/{query_id}/run", response_model=DatabaseQueryRunResponse)
+def run_database_query(query_id: str):
+    """Kör en whitelistad read-only fråga och returnerar kolumner + rader."""
     q = _get_query_or_404(query_id)
     sql = q["sql"]
     kind = q["kind"]
@@ -260,7 +259,7 @@ def run_vg_query(query_id: str):
             raise HTTPException(status_code=500, detail="Ogiltig query-typ")
 
     columns, rows = _rows_to_jsonable(raw)
-    return VgQueryExecuteResponse(
+    return DatabaseQueryRunResponse(
         query_id=q["id"],
         title=q["title"],
         sql_executed=sql,

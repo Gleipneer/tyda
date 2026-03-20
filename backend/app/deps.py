@@ -1,6 +1,14 @@
 """
 Beroenden för FastAPI: inloggad användare och admin.
-Behörighetsflaggor läses alltid från databasen vid anrop (inte bara från token).
+
+- **Applikationsbehörighet (HTTP):** JWT + kontroll av t.ex. `ArAdmin` i tabellen `Anvandare`
+  (`require_admin`, `assert_owner_or_admin`). Det styr *vem* som får anropa vilket API.
+
+- **Databasbehörighet (MySQL):** Vad backend-processen *får göra mot tabeller och procedurer*
+  styrs av **GRANT/REVOKE** för kontot i `DB_USER` — kanonisk källa: `database/scripts/grants.sql`.
+  Middleware ersätter inte databasrättigheter; den begränsar API-ytan för inloggade användare.
+
+Behörighetsflaggor för app-användare läses alltid från databasen vid anrop (inte bara från token).
 """
 from dataclasses import dataclass
 
@@ -47,7 +55,7 @@ def get_current_user(user: CurrentUser | None = Depends(get_current_user_optiona
 
 
 def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-    """Kräver administratör (ArAdmin=1 i databasen)."""
+    """Kräver administratör i *applikationen* (ArAdmin=1). MySQL-rättigheter: se grants.sql."""
     if not user.ar_admin:
         raise HTTPException(status_code=403, detail="Endast administratör")
     return user

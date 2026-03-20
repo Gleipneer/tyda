@@ -24,6 +24,8 @@
 DB_HOST, DB_PORT, DB_NAME i backend/.env
 ```
 
+`GET /api/db-health` returnerar även `mysql_connection_as` (vilket MySQL-konto backend använder) — ska stämma med `DB_USER` och med rättigheter i `database/scripts/grants.sql`.
+
 (Visa inte lösenord publikt.)
 
 ---

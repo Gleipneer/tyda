@@ -1,16 +1,16 @@
-"""Kontraktstest för whitelistade VG-queries (ingen DB)."""
+"""Kontraktstest för whitelistade databasfrågor (ingen DB)."""
 
-from app.routers import admin_vg_queries
+from app.routers import admin_database_queries
 
 
-def test_vg_queries_whitelist_nonempty_and_unique_ids():
-    ids = [q["id"] for q in admin_vg_queries._VG_QUERIES]
+def test_database_queries_whitelist_nonempty_and_unique_ids():
+    ids = [q["id"] for q in admin_database_queries._PREDEFINED_DATABASE_QUERIES]
     assert len(ids) == len(set(ids))
     assert len(ids) >= 10
 
 
-def test_vg_queries_cover_vg_principles():
-    principles = " ".join(q["principle"] for q in admin_vg_queries._VG_QUERIES).lower()
+def test_database_queries_cover_sql_principles():
+    principles = " ".join(q["principle"] for q in admin_database_queries._PREDEFINED_DATABASE_QUERIES).lower()
     assert "where" in principles
     assert "order by" in principles
     assert "inner join" in principles
@@ -21,7 +21,7 @@ def test_vg_queries_cover_vg_principles():
 
 
 def test_only_select_and_call_kinds():
-    for q in admin_vg_queries._VG_QUERIES:
+    for q in admin_database_queries._PREDEFINED_DATABASE_QUERIES:
         assert q["kind"] in ("select", "call")
         assert q["sql"].strip()
         assert not q["sql"].strip().lower().startswith(("insert", "update", "delete", "drop", "alter", "truncate"))

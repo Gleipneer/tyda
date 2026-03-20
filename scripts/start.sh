@@ -12,6 +12,7 @@ BACKEND_ENV="$BACKEND_DIR/.env"
 BACKEND_ENV_EXAMPLE="$BACKEND_DIR/.env.example"
 REQUIREMENTS_FILE="$BACKEND_DIR/requirements.txt"
 REFLEKTIONSARKIV_SQL="$ROOT/reflektionsarkiv.sql"
+GRANTS_SQL="$ROOT/database/scripts/grants.sql"
 VENV_DIR="$BACKEND_DIR/venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 BACKEND_DEPS_MARKER="$VENV_DIR/.requirements.sha256"
@@ -148,6 +149,12 @@ ensure_database_optional_import() {
     elif [ "$(printf "%s" "$db_exists" | tr -d '\r\n')" != "$db_name" ]; then
         echo "[Databas] Skapar databasen fran reflektionsarkiv.sql..."
         mysql "${mysql_args[@]}" < "$REFLEKTIONSARKIV_SQL" || fail "Automatisk import av reflektionsarkiv.sql misslyckades."
+        if [ -f "$GRANTS_SQL" ]; then
+            echo "[Databas] Tillampar database/scripts/grants.sql (GRANT/REVOKE, least privilege)..."
+            if ! mysql "${mysql_args[@]}" < "$GRANTS_SQL"; then
+                echo "[Databas] grants.sql misslyckades (kraver ofta privilegierat konto, t.ex. root). Kor manuellt: mysql -u root -p < database/scripts/grants.sql" >&2
+            fi
+        fi
     fi
 
     if [ -n "$old_mysql_pwd" ]; then

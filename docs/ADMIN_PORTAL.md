@@ -1,5 +1,10 @@
 # Adminportal och behörighet (Tyda / Reflektionsarkiv)
 
+## Databasrättigheter (GRANT) vs applikationsroller
+
+- **MySQL:** Vad backend-processen får göra mot tabeller och procedurer styrs av **`database/scripts/grants.sql`** för kontot i `DB_USER` (t.ex. `reflektionsarkiv_app`). Det är **inte** konfigurerat i Python-kod.
+- **API:** `ArAdmin` och ägarskap styr **vilken inloggad användare** som når `/api/admin/*` m.m. — se nedan. Dessa lager kompletterar varandra: `GET /api/db-health` visar `mysql_connection_as` för att verifiera vilket DB-konto som används.
+
 ## Roller
 
 | Roll | Lagring | Rättigheter |

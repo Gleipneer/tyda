@@ -1,6 +1,17 @@
 -- =============================================================================
 -- Tyda / Reflektionsarkiv – databasrättigheter (least privilege + tydlig REVOKE)
 -- =============================================================================
+-- KANONISK KÄLLA FÖR MYSQL-BEHÖRIGHETER
+-- Alla rättigheter som backend-processen har mot data lagras här (GRANT/REVOKE),
+-- inte i applikationskod. Backend använder ett MySQL-konto från backend/.env (DB_USER);
+-- vad det kontot får göra i databasen styrs av detta skript.
+--
+-- Applikationen (FastAPI) autentiserar användare med JWT och kontrollerar roller (t.ex. ArAdmin)
+-- för HTTP-API — det är identitet i tjänsten. Det ersätter inte GRANT: även admin-anrop
+-- körs via samma MySQL-anslutning om du inte sätter upp flera DB-konton manuellt.
+--
+-- Verifiera anslutet konto: GET /api/db-health (fältet mysql_connection_as).
+--
 -- Krav (VG): säkerhetsstrategi med GRANT och REVOKE för separata databasanvändare.
 --
 -- Kräver att databasen reflektionsarkiv redan finns (kör reflektionsarkiv.sql eller reset först).

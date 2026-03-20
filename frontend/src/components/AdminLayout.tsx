@@ -7,7 +7,7 @@ const links = [
   { to: "/admin/anvandare", label: "Användare", icon: Users },
   { to: "/admin/poster", label: "Poster", icon: FileText },
   { to: "/admin/begrepp", label: "Begrepp", icon: BookOpen },
-  { to: "/admin/databasfragor", label: "Databasfrågor (VG)", icon: Database },
+  { to: "/admin/databasfragor", label: "Databasfrågor", icon: Database },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -55,6 +55,8 @@ OPENAI_MODEL=gpt-4.1-mini
 
 Om din MySQL har losenord maste `DB_PASSWORD` sattas.
 
+**Databasrättigheter (GRANT):** Efter att databasen finns, kör `mysql -u root -p < database/scripts/grants.sql` (se README). Det skapar `reflektionsarkiv_app` med least privilege. För att backend ska använda det kontot: sätt `DB_USER=reflektionsarkiv_app` och lösenordet från skriptet i `backend/.env`. Verifiera med `GET http://127.0.0.1:8000/api/db-health` — fältet `mysql_connection_as` ska visa det kontot.
+
 ## Exakt startkommando
 
 Sta i projektroten och kor:

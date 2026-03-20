@@ -1,5 +1,22 @@
-/** Dev: proxas via Vite. Produktion: sätt VITE_API_BASE om API ligger på annan origin (t.ex. https://api.example.com). */
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+/** Dev: proxas via Vite. Produktion: sätt VITE_API_BASE om API ligger på annan origin. */
+function normalizeApiBase(raw: string | undefined): string {
+  if (raw == null || raw === "") return "/api";
+  const trimmed = raw.replace(/\/$/, "");
+  if (trimmed === "/api") return "/api";
+  if (trimmed.startsWith("http")) {
+    try {
+      const u = new URL(trimmed);
+      if (u.pathname === "/" || u.pathname === "") {
+        return `${trimmed}/api`;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return trimmed;
+}
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE);
 
 /** Synkas med ActiveUserContext – använd setAccessToken/clearAccessToken därifrån. */
 export const ACCESS_TOKEN_KEY = "tyda.accessToken";
@@ -28,15 +45,37 @@ function detailToMessage(detail: unknown): string {
   return "Begäran misslyckades";
 }
 
+async function parseJsonBody(res: Response): Promise<unknown> {
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (!trimmed) return undefined;
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    throw new Error(
+      "Servern returnerade inte JSON. Kontrollera att API nås (vid separat domän: VITE_API_BASE ska ofta sluta på /api om backend mountar under /api)."
+    );
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new Error("Ogiltigt JSON-svar från servern.");
+  }
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    const body = err as { detail?: unknown; error?: string };
+    const text = await res.text();
+    let body: { detail?: unknown; error?: string } = {};
+    try {
+      if (text.trim()) body = JSON.parse(text) as { detail?: unknown; error?: string };
+    } catch {
+      throw new Error(text.slice(0, 280) || res.statusText);
+    }
     const msg = body.detail != null ? detailToMessage(body.detail) : body.error || res.statusText;
     throw new Error(msg);
   }
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  const body = await parseJsonBody(res);
+  return body as T;
 }
 
 export async function get<T>(path: string): Promise<T> {

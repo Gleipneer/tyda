@@ -115,11 +115,18 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 
 ## Säkerhetsstrategi
 
-Databasen följer **least privilege**: applikationen ska använda `reflektionsarkiv_app` med begränsade rättigheter. Skriptet `database/scripts/grants.sql` gör i korthet:
+### Var behörighet styrs
 
-1. **`REVOKE ALL PRIVILEGES`** på `reflektionsarkiv.*` för app-användaren (nollställer gamla/överblivna rättigheter).
-2. **`GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE`** – ingen DDL (CREATE/DROP/ALTER-tabeller) för appkontot.
-3. **Valfritt:** `reflektionsarkiv_admin` med `ALL PRIVILEGES` på *endast* databasen `reflektionsarkiv` – för migrationer/schema utan att använda root (om du vill).
+| Lager | Vad det är | Var det definieras |
+|--------|------------|---------------------|
+| **Databas (MySQL)** | Vad *backend-processens* konton får göra mot tabeller och procedurer (`SELECT`, `INSERT`, … — inte DDL) | **`database/scripts/grants.sql`** — `REVOKE ALL` + `GRANT` (kanonisk källa) |
+| **Applikation (API)** | Vilken *inloggad användare* som får anropa vilket API (JWT, `ArAdmin`, ägarskap) | FastAPI-beroenden (`require_admin` m.m.) — **ersätter inte** GRANT: de styr HTTP-ytan, inte MySQL-servicens rättigheter |
+
+Least privilege för **dataåtkomst** i databasen uttrycks i SQL: **`reflektionsarkiv_app`** får bara det som listas i `grants.sql`:
+
+1. **`REVOKE ALL PRIVILEGES`** på `reflektionsarkiv.*` för app-användaren (idempotent nollställning).
+2. **`GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE`** — ingen DDL för appkontot.
+3. **Valfritt:** `reflektionsarkiv_admin` med `ALL PRIVILEGES` på *endast* databasen `reflektionsarkiv` — för migrationer/schema.
 
 **Körordning:** skapa databas/tabeller först (`reflektionsarkiv.sql` eller `reset_database.py`), *sedan*:
 
@@ -127,7 +134,11 @@ Databasen följer **least privilege**: applikationen ska använda `reflektionsar
 mysql -u root -p < database/scripts/grants.sql
 ```
 
-**Fördjupning (GRANT, REVOKE, hur du loggar in som admin, varför det inte finns webb-adminportal i Tyda):** se [`docs/DATABASE_SAKERHET.md`](docs/DATABASE_SAKERHET.md).
+`start.ps1` / `start.sh` kör **automatiskt** `grants.sql` direkt efter första import av `reflektionsarkiv.sql` (samma MySQL-användare som i `.env` måste då skapa användare — vanligtvis `root`).
+
+**För redovisning:** sätt `DB_USER=reflektionsarkiv_app` och motsvarande lösenord i `backend/.env` *efter* att `grants.sql` körts. Verifiera med **`GET /api/db-health`** — svaret innehåller `mysql_connection_as` (vilket MySQL-konto backend använder) och `privilege_script`.
+
+**Fördjupning:** [`docs/DATABASE_SAKERHET.md`](docs/DATABASE_SAKERHET.md). Adminportal i webben (innehåll) beskrivs i [`docs/ADMIN_PORTAL.md`](docs/ADMIN_PORTAL.md). **MySQL-administration** (skapa tabeller, köra `grants.sql`) görs med privilegierat konto (t.ex. root), inte via webb-GRANT.
 
 ## Reflektion – databasval och design
 
@@ -165,13 +176,13 @@ Index finns där appen filtrerar och joinar: Poster (AnvandarID, KategoriID, Ska
 
 - Parameteriserade frågor (inga SQL-injection via strängkonkatenering).
 - Inloggning: `POST /api/auth/login` jämför lösenord mot **bcrypt-hash** i `Anvandare.LosenordHash`. Demo-konton: `docs/INLOGGNING_DEMO.md`.
-- Begränsat databaskonto via `grants.sql`.
+- **MySQL-behörigheter** definieras i **`database/scripts/grants.sql`** (inte i applikationskod); API-lagret autentiserar användare men kan inte ge mer än vad `DB_USER` har fått via GRANT.
 - Constraints: NOT NULL, ENUM, UNIQUE, FOREIGN KEY, CHECK (titel får inte vara tom).
-- **Behörighet:** poster skapas/uppdateras/raderas med **JWT** (`Authorization: Bearer`). Ägarskap och admin (`ArAdmin`) kontrolleras i backend. **Adminportal:** se [`docs/ADMIN_PORTAL.md`](docs/ADMIN_PORTAL.md). Miljövariabler för JWT: `backend/.env.example`.
+- **Applikationsbehörighet:** poster skapas/uppdateras/raderas med **JWT** (`Authorization: Bearer`). Ägarskap och admin (`ArAdmin`) kontrolleras i backend. **Adminportal:** se [`docs/ADMIN_PORTAL.md`](docs/ADMIN_PORTAL.md). Miljövariabler för JWT: `backend/.env.example`.
 
 ## Dokumentation
 
-- `docs/DATABASE_SAKERHET.md` – GRANT/REVOKE, MySQL-admin vs appanvändare, ingen adminportal
+- `docs/DATABASE_SAKERHET.md` – GRANT/REVOKE, MySQL-admin vs appanvändare, skillnad mot webbadmin
 - `docs/DATABASE_HELP.md` – databasen förklarad (pedagogiskt)
 - `docs/PRESTANDANALYS.md` – prestanda och index
 - `docs/API_PLAN.md` – API-endpoints

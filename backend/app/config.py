@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4.1-mini"  # gpt-4.1-mini | gpt-4.1 | gpt-4o | gpt-5-mini | gpt-5
 
+    # CORS: komma-separerade origins (t.ex. https://min-app.pages.dev) utöver lokala Vite-URL:er
+    CORS_ORIGINS: str = ""
+
     # JWT (byt alltid JWT_SECRET i produktion)
     JWT_SECRET: str = "dev-tyda-bytes-i-produktion-minst-32-tecken"
     JWT_ALGORITHM: str = "HS256"

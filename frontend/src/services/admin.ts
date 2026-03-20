@@ -44,8 +44,8 @@ export function adminDeleteConcept(id: number): Promise<{ message: string }> {
   return del<{ message: string }>(`/concepts/${id}`);
 }
 
-/** Fördefinierade VG-SQL:er (admin, read-only i backend). */
-export interface VgQueryCatalogItem {
+/** Fördefinierade databasfrågor (admin, skrivskyddade i backend). */
+export interface DatabaseQueryCatalogItem {
   id: string;
   title: string;
   description: string;
@@ -53,7 +53,7 @@ export interface VgQueryCatalogItem {
   sql_text: string;
 }
 
-export interface VgQueryRunResult {
+export interface DatabaseQueryRunResult {
   query_id: string;
   title: string;
   sql_executed: string;
@@ -63,10 +63,10 @@ export interface VgQueryRunResult {
   kind: "select" | "call";
 }
 
-export function fetchVgQueryCatalog(): Promise<VgQueryCatalogItem[]> {
-  return get<VgQueryCatalogItem[]>("/admin/vg-queries");
+export function fetchDatabaseQueryCatalog(): Promise<DatabaseQueryCatalogItem[]> {
+  return get<DatabaseQueryCatalogItem[]>("/admin/database-queries");
 }
 
-export function runVgQuery(queryId: string): Promise<VgQueryRunResult> {
-  return post<VgQueryRunResult>(`/admin/vg-queries/${encodeURIComponent(queryId)}/run`, {});
+export function runDatabaseQuery(queryId: string): Promise<DatabaseQueryRunResult> {
+  return post<DatabaseQueryRunResult>(`/admin/database-queries/${encodeURIComponent(queryId)}/run`, {});
 }

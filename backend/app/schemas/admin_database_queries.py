@@ -1,12 +1,12 @@
-"""Schema för admin VG-queryvisning (read-only, whitelist)."""
+"""Schema för admin: fördefinierade databasfrågor (read-only, whitelist)."""
 
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
-class VgQueryCatalogItem(BaseModel):
-    """Metadata för en fördefinierad query (ingen exekvering i listan)."""
+class DatabaseQueryCatalogItem(BaseModel):
+    """Metadata för en fördefinierad fråga (ingen exekvering i listan)."""
 
     id: str
     title: str
@@ -17,8 +17,8 @@ class VgQueryCatalogItem(BaseModel):
     sql_text: str = Field(description="Exakt SQL som körs (för pedagogik och transparens)")
 
 
-class VgQueryExecuteResponse(BaseModel):
-    """Resultat från en whitelistad query."""
+class DatabaseQueryRunResponse(BaseModel):
+    """Resultat från en whitelistad fråga."""
 
     query_id: str
     title: str
