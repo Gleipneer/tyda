@@ -87,7 +87,10 @@ def test_completion_kwargs_use_max_tokens_for_legacy_models():
 
 
 def test_completion_kwargs_use_max_completion_tokens_for_gpt5():
-    assert _completion_create_kwargs("gpt-5") == {"max_completion_tokens": 1200}
+    assert _completion_create_kwargs("gpt-5") == {
+        "max_completion_tokens": 1200,
+        "extra_body": {"reasoning_effort": "minimal"},
+    }
 
 
 def test_poem_contract_has_six_uniform_sections():

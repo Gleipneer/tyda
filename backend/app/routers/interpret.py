@@ -421,13 +421,17 @@ def _ensure_model_visible_in_status(chosen_model: str) -> tuple[bool, str | None
     )
 
 
-def _completion_create_kwargs(model_id: str) -> dict[str, float | int]:
+def _completion_create_kwargs(model_id: str) -> dict[str, object]:
     """
     GPT-5-familjen använder max_completion_tokens i chat.completions.
+    I denna SDK-version skickas reasoning_effort via extra_body.
     Äldre modeller i Tyda-flödet använder fortsatt max_tokens.
     """
     if model_id.startswith("gpt-5"):
-        return {"max_completion_tokens": 1200}
+        return {
+            "max_completion_tokens": 1200,
+            "extra_body": {"reasoning_effort": "minimal"},
+        }
     return {"temperature": 0.2, "max_tokens": 1200}
 
 
