@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
-import { LayoutDashboard, Users, FileText, BookOpen } from "lucide-react";
+import { LayoutDashboard, Users, FileText, BookOpen, Database } from "lucide-react";
 
 const links = [
   { to: "/admin", label: "Översikt", icon: LayoutDashboard, end: true },
   { to: "/admin/anvandare", label: "Användare", icon: Users },
   { to: "/admin/poster", label: "Poster", icon: FileText },
   { to: "/admin/begrepp", label: "Begrepp", icon: BookOpen },
+  { to: "/admin/databasfragor", label: "Databasfrågor (VG)", icon: Database },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

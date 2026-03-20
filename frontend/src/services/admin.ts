@@ -43,3 +43,30 @@ export function adminUpdateConcept(id: number, body: { ord: string; beskrivning:
 export function adminDeleteConcept(id: number): Promise<{ message: string }> {
   return del<{ message: string }>(`/concepts/${id}`);
 }
+
+/** Fördefinierade VG-SQL:er (admin, read-only i backend). */
+export interface VgQueryCatalogItem {
+  id: string;
+  title: string;
+  description: string;
+  principle: string;
+  sql_text: string;
+}
+
+export interface VgQueryRunResult {
+  query_id: string;
+  title: string;
+  sql_executed: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  row_count: number;
+  kind: "select" | "call";
+}
+
+export function fetchVgQueryCatalog(): Promise<VgQueryCatalogItem[]> {
+  return get<VgQueryCatalogItem[]>("/admin/vg-queries");
+}
+
+export function runVgQuery(queryId: string): Promise<VgQueryRunResult> {
+  return post<VgQueryRunResult>(`/admin/vg-queries/${encodeURIComponent(queryId)}/run`, {});
+}

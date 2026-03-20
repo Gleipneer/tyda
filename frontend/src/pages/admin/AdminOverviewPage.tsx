@@ -49,6 +49,11 @@ export default function AdminOverviewPage() {
               Lexikon / begrepp <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </li>
+          <li>
+            <Link className="inline-flex items-center gap-2 text-primary hover:underline" to="/admin/databasfragor">
+              Databasfrågor (VG) <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </li>
         </ul>
       </ContentCard>
     </AdminLayout>

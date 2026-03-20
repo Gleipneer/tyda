@@ -21,6 +21,7 @@ import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPostsPage from "./pages/admin/AdminPostsPage";
 import AdminConceptsPage from "./pages/admin/AdminConceptsPage";
+import AdminVgQueriesPage from "./pages/admin/AdminVgQueriesPage";
 import EditPostPage from "./pages/EditPostPage";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,14 @@ const App = () => (
               element={
                 <RequireAdmin>
                   <AdminConceptsPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/databasfragor"
+              element={
+                <RequireAdmin>
+                  <AdminVgQueriesPage />
                 </RequireAdmin>
               }
             />
