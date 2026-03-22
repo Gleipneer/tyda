@@ -28,6 +28,7 @@ def test_core_tables_exist():
         "kategorier",
         "postbegrepp",
         "poster",
+        "schema_migrations",
     ]
 
 

@@ -1,4 +1,4 @@
-# Tyda – robust startskript (Windows PowerShell)
+﻿# Tyda – robust startskript (Windows PowerShell)
 # Kör från projektroten: .\scripts\start.ps1
 
 $ErrorActionPreference = "Stop"
@@ -229,7 +229,7 @@ function Initialize-DatabaseOptionalImport() {
     #>
     $mysql = Get-CommandPath @("mysql.exe", "mysql")
     if (-not $mysql) {
-        Write-Host "[Databas] mysql-klient saknas — hoppar over automatisk skapande (kor migrationer nedan om DB redan finns)." -ForegroundColor Yellow
+        Write-Host "DATABAS: mysql-klient saknas - hoppar over automatisk skapande (kor migrationer nedan om DB redan finns)." -ForegroundColor Yellow
         return
     }
 
@@ -251,21 +251,21 @@ function Initialize-DatabaseOptionalImport() {
 
         $dbExists = & $mysql @queryArgs 2>$null
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "[Databas] Kunde inte verifiera databas via mysql-klient. Fortsatter — skapa DB manuellt om den saknas." -ForegroundColor Yellow
+            Write-Host "DATABAS: Kunde inte verifiera databas via mysql-klient. Fortsatter - skapa DB manuellt om den saknas." -ForegroundColor Yellow
             return
         }
 
         if (($dbExists | Out-String).Trim() -ne $dbName) {
-            Write-Host "[Databas] Skapar databasen fran reflektionsarkiv.sql..." -ForegroundColor Yellow
+            Write-Host "DATABAS: Skapar databasen fran reflektionsarkiv.sql..." -ForegroundColor Yellow
             Get-Content -Raw $ReflektionsarkivSqlPath | & $mysql "--protocol=TCP" "--host=$dbHost" "--port=$dbPort" "--user=$dbUser"
             if ($LASTEXITCODE -ne 0) {
                 Stop-WithMessage "Automatisk import av reflektionsarkiv.sql misslyckades. Kontrollera DB_HOST, DB_USER och DB_PASSWORD i backend\.env."
             }
             if (Test-Path $GrantsSqlPath) {
-                Write-Host "[Databas] Tillampar database/scripts/grants.sql (GRANT/REVOKE, least privilege)..." -ForegroundColor Yellow
+                Write-Host "DATABAS: Tillampar database/scripts/grants.sql (GRANT/REVOKE, least privilege)..." -ForegroundColor Yellow
                 Get-Content -Raw $GrantsSqlPath | & $mysql "--protocol=TCP" "--host=$dbHost" "--port=$dbPort" "--user=$dbUser"
                 if ($LASTEXITCODE -ne 0) {
-                    Write-Host "[Databas] grants.sql misslyckades (kraver ofta privilegierat konto, t.ex. root). Kor manuellt: mysql -u root -p < database\scripts\grants.sql" -ForegroundColor Yellow
+                    Write-Host "DATABAS: grants.sql misslyckades (kraver ofta privilegierat konto, t.ex. root). Kor manuellt: mysql -u root -p < database\scripts\grants.sql" -ForegroundColor Yellow
                 }
             }
         }
@@ -283,8 +283,21 @@ function Invoke-DatabaseMigrations() {
     Kor alltid efter venv: schema_migrations + lexikon (001-017 m.fl., se run_migration_utf8.py).
     Kraver att MySQL finns och att backend\.env ar korrekt.
     #>
-    Write-Host "[Databas] Kor migrationer (Python, UTF-8)..." -ForegroundColor Yellow
+    Write-Host "DATABAS: Kor migrationer (Python, UTF-8)..." -ForegroundColor Yellow
     Invoke-Checked $VenvPython @("scripts/run_migration_utf8.py") $BackendDir "Migrering av databasen"
+}
+
+function Invoke-Tests() {
+    Write-Host "[Test] Kor testsviten (robust fallback: stoppar om fel hittas)..." -ForegroundColor Yellow
+    Push-Location $BackendDir
+    try {
+        & $VenvPython -m pytest tests/
+        if ($LASTEXITCODE -ne 0) {
+            Stop-WithMessage "Testsviten misslyckades! Fallback inkopplad: Systemet vagrar starta innan testerna ar grona."
+        }
+    } finally {
+        Pop-Location
+    }
 }
 
 Copy-IfMissing $BackendEnvExamplePath $BackendEnvPath "Backend"
@@ -292,6 +305,7 @@ Initialize-BackendVenv
 Install-FrontendDependencies
 Initialize-DatabaseOptionalImport
 Invoke-DatabaseMigrations
+Invoke-Tests
 
 Stop-BackendProcesses $BackendPort $BackendDir
 Stop-FrontendProcesses $FrontendPort $FrontendDir

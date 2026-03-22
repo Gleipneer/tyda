@@ -43,7 +43,6 @@ const relations = [
   { from: "Begrepp", to: "PostBegrepp", label: "1 begrepp kan finnas i många poster" },
   { from: "Poster", to: "AktivitetLogg", label: "1:N — FK PostID i SQL (ON DELETE CASCADE). Streckad i diagram = loggrad skapas av trigger." },
   { from: "Anvandare", to: "AktivitetLogg", label: "1:N — FK AnvandarID i SQL. Streckad i diagram = samma loggsemantik som ovan." },
-  { from: "Kategorier", to: "AktivitetLogg", label: "Streckad linje i diagrammet endast: ingen KategoriID i AktivitetLogg; koppling sker via Poster." },
 ];
 
 const queryExamples = [
@@ -170,16 +169,16 @@ export default function AboutDatabasePage() {
       />
 
       <ContentCard padding="lg" className="mb-6">
-        <h2 className="text-xl font-display font-semibold text-foreground mb-3">Det viktigaste först</h2>
+        <h2 className="text-xl font-display font-semibold text-foreground mb-3">Kort om uppbyggnaden</h2>
         <div className="grid gap-4 lg:grid-cols-3">
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            Databasen är medvetet liten: 6 tabeller, 2 triggers och 1 lagrad procedur. Tyngre matchning och AI-tolkning ligger i backend, inte i schemat. Inloggning använder JWT mot API; lösenord lagras endast som bcrypt-hash.
+            Databasen består av 6 tabeller, 2 triggers och 1 lagrad procedur. Den är medvetet liten – AI:n och matchningslogiken körs i koden istället, så databasen agerar bara lagringsyta. Inloggning körs via JWT och lösenorden förvaras kryptiskt via bcrypt.
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            ER-diagrammet visar tabeller, kolumner och relationer. Mer beskrivning per tabell finns under &quot;Tabeller&quot;. `PostBegrepp` är den verkliga många-till-många-tabellen; automatisk begreppsmatchning räknas i backend och sparas inte där.
+            ER-diagrammet under visualiserar tabellerna och deras relationer. Den faktiska många-till-många-kopplingen i systemet ligger i <code>PostBegrepp</code> (när du väljer att markera/koppla ett begrepp), matchade ord från AI sparas inte skarpt.
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            `AktivitetLogg` loggar skapande och relevanta uppdateringar av poster — inte en full auditlogg över allt som händer i systemet.
+            <code>AktivitetLogg</code> är en logg som fylls på automatiskt när du uppdaterar eller skapar nya poster.
           </p>
         </div>
       </ContentCard>
@@ -230,14 +229,6 @@ export default function AboutDatabasePage() {
                 <line x1="412" y1="196" x2="412" y2="318" className="stroke-primary" strokeWidth="1.5" strokeDasharray="6 4" markerEnd="url(#er-arrow)" />
                 <path
                   d="M 114 122 L 114 288 L 302 288 L 302 318"
-                  fill="none"
-                  className="stroke-primary"
-                  strokeWidth="1.5"
-                  strokeDasharray="5 4"
-                  markerEnd="url(#er-arrow)"
-                />
-                <path
-                  d="M 114 252 L 114 302 L 302 302 L 302 318"
                   fill="none"
                   className="stroke-primary"
                   strokeWidth="1.5"

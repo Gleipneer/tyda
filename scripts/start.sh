@@ -169,6 +169,13 @@ invoke_database_migrations() {
     (cd "$BACKEND_DIR" && "$VENV_PYTHON" scripts/run_migration_utf8.py) || fail "Migrering av databasen misslyckades."
 }
 
+invoke_tests() {
+    echo "[Test] Kor testsviten (robust fallback: stoppar om fel hittas)..."
+    if ! (cd "$BACKEND_DIR" && "$VENV_PYTHON" -m pytest tests/); then
+        fail "Testsviten misslyckades! Fallback inkopplad: Systemet vagrar starta innan testerna ar grona."
+    fi
+}
+
 kill_port() {
     local port="$1"
     local pids=""
@@ -200,6 +207,7 @@ ensure_backend_venv
 ensure_frontend_deps
 ensure_database_optional_import
 invoke_database_migrations
+invoke_tests
 
 kill_port "$BACKEND_PORT"
 kill_port "$FRONTEND_PORT"
