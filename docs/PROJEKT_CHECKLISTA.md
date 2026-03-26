@@ -23,4 +23,5 @@ Sammanställning av punkter från projektplaneringen och vad som är gjort i rep
 
 ## Kända begränsningar (produktion)
 
-- Skriv-API kan fortfarande lita på `anvandar_id` från klienten; riktig drift kräver session/JWT kopplad till inloggning (se README).
+- JWT lagras i `localStorage`; för hårdare säkerhet överväg httpOnly-cookies, kortare tokenlivslängd och roterande `JWT_SECRET`.
+- Globalt begrepps-CRUD (`POST/PUT/DELETE /api/concepts`) är fortfarande oskyddat i demo-läge; i produktion bör endast admin (t.ex. `ArAdmin`) få ändra lexikonet.

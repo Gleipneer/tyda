@@ -1,8 +1,10 @@
 """Autentisering (lösenordskontroll mot databasen)."""
 from fastapi import APIRouter, HTTPException
 
+from app.jwt_tokens import create_access_token
 from app.repositories import user_repo
 from app.schemas.auth import LoginRequest
+from app.schemas.tokens import AuthResponse
 from app.schemas.users import UserRead
 from app.security import verify_password
 
@@ -19,13 +21,15 @@ def _row_to_user_read(row: dict) -> UserRead:
     )
 
 
-@router.post("/auth/login", response_model=UserRead)
+@router.post("/auth/login", response_model=AuthResponse)
 def login(data: LoginRequest):
-    """Verifierar lösenord och returnerar användaren utan känsliga fält."""
+    """Verifierar lösenord och returnerar JWT + användare."""
     row = user_repo.get_user_with_hash_by_identifier(data.identifier.strip())
     if not row:
         raise HTTPException(status_code=401, detail="Felaktig e-post eller lösenord")
     if not verify_password(data.password, row["LosenordHash"]):
         raise HTTPException(status_code=401, detail="Felaktig e-post eller lösenord")
     public = {k: v for k, v in row.items() if k != "LosenordHash"}
-    return _row_to_user_read(public)
+    user = _row_to_user_read(public)
+    token = create_access_token(user.anvandar_id)
+    return AuthResponse(access_token=token, user=user)

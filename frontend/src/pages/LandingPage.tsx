@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import ContentCard from "@/components/ContentCard";
-import { createUser, loginUser } from "@/services/users";
+import { createUser, loginUser, toSessionUser } from "@/services/users";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 
 export default function LandingPage() {
@@ -22,8 +22,8 @@ export default function LandingPage() {
 
   const loginMutation = useMutation({
     mutationFn: () => loginUser(loginId.trim(), loginPassword),
-    onSuccess: (user) => {
-      setActiveUser(user);
+    onSuccess: (res) => {
+      setActiveUser(toSessionUser(res));
       setFormError(null);
     },
     onError: () => {
@@ -38,8 +38,8 @@ export default function LandingPage() {
         epost: email.trim(),
         losenord: regPassword,
       }),
-    onSuccess: (user) => {
-      setActiveUser(user);
+    onSuccess: (res) => {
+      setActiveUser(toSessionUser(res));
       setFormError(null);
     },
     onError: (error: Error) => {

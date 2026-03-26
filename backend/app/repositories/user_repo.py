@@ -2,6 +2,12 @@
 from app.db import get_cursor
 
 
+def is_admin(user_id: int) -> bool:
+    """True om användaren har ArAdmin=1 i databasen."""
+    row = get_user_by_id(user_id)
+    return bool(row and int(row.get("ArAdmin") or 0))
+
+
 def get_user_by_id(user_id: int):
     """Hämtar en användare på ID. Returnerar None om inte finns."""
     with get_cursor() as cursor:

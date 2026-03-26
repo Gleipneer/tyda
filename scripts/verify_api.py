@@ -12,10 +12,24 @@ from urllib.error import HTTPError, URLError
 BASE = "http://127.0.0.1:8000/api"
 
 
-def req(method: str, path: str, body: dict | None = None) -> tuple[int, dict | list]:
+def req(
+    method: str,
+    path: str,
+    body: dict | None = None,
+    extra_headers: dict | None = None,
+) -> tuple[int, dict | list]:
     url = BASE + path
-    data = json.dumps(body).encode() if body else None
-    req_obj = Request(url, data=data, method=method, headers={"Content-Type": "application/json"} if body else {})
+    headers: dict[str, str] = {}
+    if body is not None:
+        data = json.dumps(body).encode()
+        headers["Content-Type"] = "application/json"
+    elif method in ("POST", "PUT", "PATCH", "DELETE"):
+        data = b""
+    else:
+        data = None
+    if extra_headers:
+        headers.update(extra_headers)
+    req_obj = Request(url, data=data, method=method, headers=headers)
     try:
         with urlopen(req_obj, timeout=10) as r:
             return r.status, json.loads(r.read().decode())
@@ -49,9 +63,11 @@ def main():
         "/auth/login",
         {"identifier": "admin@tyda.local", "password": "admin"},
     )
-    if code == 200 and isinstance(data, dict) and data.get("anvandar_id"):
+    token = None
+    if code == 200 and isinstance(data, dict) and data.get("access_token") and data.get("user"):
         ok.append("POST /api/auth/login")
-        uid = data["anvandar_id"]
+        token = data["access_token"]
+        uid = data["user"]["anvandar_id"]
         code2, data2 = req("GET", f"/users/{uid}")
         if code2 == 200 and isinstance(data2, dict):
             ok.append("GET /api/users/{id}")
@@ -67,19 +83,27 @@ def main():
     else:
         errors.append(f"GET /api/categories: {code}")
 
-    # Posts
-    code, data = req("GET", "/posts")
-    if code == 200 and isinstance(data, list):
-        ok.append("GET /api/posts")
-    else:
-        errors.append(f"GET /api/posts: {code}")
+    auth_headers = {"Authorization": f"Bearer {token}"} if token else None
 
-    # Activity
-    code, data = req("GET", "/activity")
-    if code == 200 and isinstance(data, list):
-        ok.append("GET /api/activity")
+    # Posts (kräver JWT sedan listning utan anvandar_id begränsas per användare/admin)
+    if not token:
+        errors.append("GET /api/posts: saknar JWT")
     else:
-        errors.append(f"GET /api/activity: {code}")
+        code, data = req("GET", "/posts", extra_headers=auth_headers)
+        if code == 200 and isinstance(data, list):
+            ok.append("GET /api/posts (med JWT)")
+        else:
+            errors.append(f"GET /api/posts: {code}")
+
+    # Activity (kräver JWT; admin ser hela loggen)
+    if not token:
+        errors.append("GET /api/activity: saknar JWT")
+    else:
+        code, data = req("GET", "/activity", extra_headers=auth_headers)
+        if code == 200 and isinstance(data, list):
+            ok.append("GET /api/activity (med JWT)")
+        else:
+            errors.append(f"GET /api/activity: {code}")
 
     # Analytics
     for path in ["/analytics/posts-per-category", "/analytics/posts-per-user", "/analytics/most-used-concepts"]:
@@ -94,11 +118,19 @@ def main():
     if code == 200 and isinstance(data, dict):
         ok.append("GET /api/interpret/status")
         if data.get("available"):
-            code, ai_data = req("POST", "/posts/1/interpret", {})
-            if code == 200 and isinstance(ai_data, dict) and ai_data.get("interpretation"):
-                ok.append("POST /api/posts/1/interpret")
+            if not token:
+                errors.append("POST /api/posts/1/interpret: saknar JWT (inloggning misslyckades)")
             else:
-                errors.append(f"POST /api/posts/1/interpret: {code} {ai_data}")
+                code, ai_data = req(
+                    "POST",
+                    "/posts/1/interpret",
+                    {},
+                    {"Authorization": f"Bearer {token}"},
+                )
+                if code == 200 and isinstance(ai_data, dict) and ai_data.get("interpretation"):
+                    ok.append("POST /api/posts/1/interpret")
+                else:
+                    errors.append(f"POST /api/posts/1/interpret: {code} {ai_data}")
     else:
         errors.append(f"GET /api/interpret/status: {code} {data}")
 

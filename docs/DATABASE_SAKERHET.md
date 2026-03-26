@@ -16,11 +16,11 @@ Det här dokumentet stödjer VG-kravet om **säkerhetsstrategi** (t.ex. begräns
 
 ## Finns en ”adminportal” i Tyda?
 
-**Nej – inte som i många VG-exempel (t.ex. e-handel med separat admin-UI).**
+**Delvis – på applikationsnivå, inte för MySQL.**
 
-- I kurs-PDF:er förekommer ofta en **webbaserad adminportal** för att hantera lager, ordrar eller textfält. Det är ett **generellt exempel**, inte något som automatiskt ska finnas i varje projekt.
-- I **Tyda** finns **ingen** separat webbplats eller route som heter ”admin” för databasen. Administration av MySQL görs med **mysql-klient**, **MySQL Workbench** eller motsvarande, med **root** eller **`reflektionsarkiv_admin`**.
-- Tabellen **`Begrepp`** kan hanteras via befintlig API-/appfunktionalitet där det stöds; det är **applikationsnivå**, inte en dedikerad ”DB-adminportal”.
+- **Webb-`/admin` i Tyda** (synlig för konton med `Anvandare.ArAdmin = 1`) är **moderation i appen**: lista alla poster, ta bort valfritt inlägg, och läsa hela `AktivitetLogg` (inkl. rader som triggers skriver). Backend kontrollerar behörighet mot **`ArAdmin` i tabellen `Anvandare`** efter JWT.
+- **`reflektionsarkiv_admin` i MySQL** (se `grants.sql`) är ett **separat** serverkonto för schema, migrationer och `GRANT`/`REVOKE`. Det är **inte** samma sak som inloggad ”admin” i Tyda: drift kan köra backend som `reflektionsarkiv_app`, som har DML men inte DDL; app-admins utövar sina rättigheter via API ovanpå det kontot.
+- **Root / `reflektionsarkiv_admin` i mysql-klient** används fortfarande för databasunderhåll – inte ersatt av webb-`/admin`.
 
 *(Om VG-dokument kräver visning av **Kommentar TEXT** i admin: den kolumnen finns **inte** längre i `PostBegrepp` – se `VG/VG_ATERSTAENDE.md`.)*
 

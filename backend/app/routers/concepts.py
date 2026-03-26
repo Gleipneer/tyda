@@ -1,6 +1,7 @@
 """Endpoints för begrepp och post-begrepp-kopplingar."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.deps import get_current_user_id
 from app.repositories import concept_repo, post_repo
 from app.services.symbol_matcher import find_matches
 from app.schemas.concepts import ConceptRead, ConceptCreate, PostConceptRead, PostConceptCreate
@@ -86,10 +87,13 @@ def list_post_concepts(post_id: int):
 
 
 @router.post("/posts/{post_id}/concepts", status_code=201)
-def link_concept(post_id: int, data: PostConceptCreate):
-    """Kopplar begrepp till post."""
-    if not post_repo.get_post_by_id(post_id):
+def link_concept(post_id: int, data: PostConceptCreate, user_id: int = Depends(get_current_user_id)):
+    """Kopplar begrepp till post. Endast postens ägare."""
+    post = post_repo.get_post_by_id(post_id)
+    if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+    if post["anvandar"]["anvandar_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Du kan bara koppla begrepp till egna poster")
     if not concept_repo.get_concept_by_id(data.begrepp_id):
         raise HTTPException(status_code=404, detail="Concept not found")
     try:
@@ -102,8 +106,13 @@ def link_concept(post_id: int, data: PostConceptCreate):
 
 
 @router.delete("/post-concepts/{post_begrepp_id}")
-def unlink_concept(post_begrepp_id: int):
-    """Tar bort koppling mellan post och begrepp."""
+def unlink_concept(post_begrepp_id: int, user_id: int = Depends(get_current_user_id)):
+    """Tar bort koppling mellan post och begrepp. Endast postens ägare."""
+    owner = concept_repo.get_post_owner_for_post_begrepp(post_begrepp_id)
+    if owner is None:
+        raise HTTPException(status_code=404, detail="Post concept link not found")
+    if owner != user_id:
+        raise HTTPException(status_code=403, detail="Du kan bara ta bort kopplingar på egna poster")
     n = concept_repo.delete_post_concept(post_begrepp_id)
     if n == 0:
         raise HTTPException(status_code=404, detail="Post concept link not found")

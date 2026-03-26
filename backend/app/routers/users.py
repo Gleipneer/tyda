@@ -1,7 +1,9 @@
 """Endpoints för användare."""
 from fastapi import APIRouter, HTTPException
 
+from app.jwt_tokens import create_access_token
 from app.repositories import user_repo
+from app.schemas.tokens import AuthResponse
 from app.schemas.users import UserRead, UserCreate
 from app.security import hash_password
 
@@ -28,16 +30,18 @@ def get_user(user_id: int):
     return _row_to_user(row)
 
 
-@router.post("/users", response_model=UserRead, status_code=201)
+@router.post("/users", response_model=AuthResponse, status_code=201)
 def create_user(data: UserCreate):
-    """Skapar ny användare med hashat lösenord (minst 8 tecken)."""
+    """Skapar ny användare med hashat lösenord (minst 8 tecken). Returnerar JWT + profil."""
     if len(data.losenord) < 8:
         raise HTTPException(status_code=400, detail="Lösenord måste vara minst 8 tecken")
     try:
         pwd_hash = hash_password(data.losenord)
         uid = user_repo.create_user(data.anvandarnamn.strip(), data.epost.strip().lower(), pwd_hash)
         user = user_repo.get_user_by_id(uid)
-        return _row_to_user(user)
+        uread = _row_to_user(user)
+        token = create_access_token(uread["anvandar_id"])
+        return AuthResponse(access_token=token, user=UserRead(**uread))
     except Exception as e:
         if "Duplicate" in str(e) or "UNIQUE" in str(e):
             raise HTTPException(status_code=400, detail="Epost already exists")

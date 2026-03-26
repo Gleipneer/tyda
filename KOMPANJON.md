@@ -19,8 +19,7 @@ Om allt finns installerat och dina databasuppgifter fungerar kommer skriptet att
 - installera backendpaket om de saknas eller har andrats
 - installera frontendpaket om de saknas eller har andrats
 - skapa databasen fran `reflektionsarkiv.sql` om den saknas
-- kora migrationerna
-- starta backend pa `http://127.0.0.1:8000`
+- starta backend pa `http://127.0.0.1:8000` (migrationerna kors automatiskt vid backend-uppstart innan API:t oppnas)
 - starta frontend pa `http://localhost:5173`
 
 ## Du behover detta installerat
@@ -93,11 +92,9 @@ Kor da detta manuellt:
 
 ```powershell
 mysql -u root -p < reflektionsarkiv.sql
-cd backend
-.\venv\Scripts\python.exe scripts\run_migration_utf8.py
 ```
 
-Byt `root` till ditt eget MySQL-konto om du anvander ett annat.
+Byt `root` till ditt eget MySQL-konto om du anvander ett annat. Darefter: starta backend (`uvicorn` eller `start.ps1`) sa kors `database/migrations/*.sql` automatiskt. Du kan ocksa kora samma kedja manuellt: `cd backend` och `.\venv\Scripts\python.exe scripts\run_migration_utf8.py`.
 
 ## Nar allt fungerar
 

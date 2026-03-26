@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/AppLayout";
 import PageHeader from "@/components/PageHeader";
@@ -9,7 +9,7 @@ import { Sparkles, BookOpen, Brain, ChevronDown, ChevronUp } from "lucide-react"
 import { fetchPost, fetchPublicPost } from "@/services/posts";
 import { fetchPostConcepts, fetchMatchedConcepts, unlinkConcept } from "@/services/concepts";
 import { fetchInterpretStatus, interpretPost } from "@/services/interpret";
-import type { InterpretModelOption, InterpretResponse } from "@/services/interpret";
+import type { InterpretModelOption } from "@/services/interpret";
 import { matchTypeLabel } from "@/lib/matchTypeLabels";
 import { getInterpretationPreview, type InterpretationPreview } from "@/lib/interpretationContracts";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
@@ -18,6 +18,7 @@ import VisibilityBadge from "@/components/VisibilityBadge";
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeUser } = useActiveUser();
   const postId = id ? Number(id) : 0;
   const [aiExpanded, setAiExpanded] = useState(false);
@@ -26,7 +27,7 @@ export default function PostDetailPage() {
 
   const { data: post, isLoading, error } = useQuery({
     queryKey: ["post", postId, isPublicView, activeUser?.anvandar_id],
-    queryFn: () => (isPublicView ? fetchPublicPost(postId) : fetchPost(postId, activeUser?.anvandar_id)),
+    queryFn: () => (isPublicView ? fetchPublicPost(postId) : fetchPost(postId)),
     enabled: !!postId && (isPublicView || !!activeUser),
   });
 
@@ -45,13 +46,14 @@ export default function PostDetailPage() {
   const { data: interpretStatus } = useQuery({
     queryKey: ["interpret-status"],
     queryFn: fetchInterpretStatus,
+    staleTime: 30_000,
+    refetchOnMount: "always",
   });
   const orderedMatches = useMemo(
     () => [...matched.matches].sort((a, b) => b.score - a.score),
     [matched.matches]
   );
 
-  const [interpretation, setInterpretation] = useState<InterpretResponse | null>(null);
   const [interpretLoading, setInterpretLoading] = useState(false);
   const [interpretError, setInterpretError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("");
@@ -72,7 +74,14 @@ export default function PostDetailPage() {
     setInterpretLoading(true);
     setInterpretError(null);
     interpretPost(postId, selectedModel || undefined)
-      .then((response) => setInterpretation(response))
+      .then((response) => {
+        try {
+          sessionStorage.setItem(`tyda.interpret.${postId}`, JSON.stringify(response));
+        } catch {
+          /* ignore quota */
+        }
+        navigate(`/posts/${postId}/tolkning`, { state: { interpretation: response } });
+      })
       .catch((e) => setInterpretError(e.message))
       .finally(() => setInterpretLoading(false));
   };
@@ -235,7 +244,6 @@ export default function PostDetailPage() {
               <AIPanel
                 expanded={aiExpanded}
                 onToggle={() => setAiExpanded(!aiExpanded)}
-                interpretation={interpretation}
                 available={interpretStatus?.available}
                 loading={interpretLoading}
                 error={interpretError}
@@ -255,7 +263,6 @@ export default function PostDetailPage() {
               <AIPanel
                 expanded={aiExpanded}
                 onToggle={() => setAiExpanded(!aiExpanded)}
-                interpretation={interpretation}
                 available={interpretStatus?.available}
                 loading={interpretLoading}
                 error={interpretError}
@@ -284,6 +291,9 @@ function humanizeAIError(raw: string): string {
   if (/openai_api_key|saknas|not configured|inte konfigurerad/i.test(raw)) {
     return "AI-tolkning är inte aktiverad i backend just nu.";
   }
+  if (/stöds inte|tillåtna id/i.test(raw)) {
+    return "Den valda modellen stöds inte längre. Välj en annan i listan (listan kommer från backend).";
+  }
   if (/invalid.*model|modellen/i.test(raw)) {
     return "Den valda AI-modellen går inte att använda just nu.";
   }
@@ -299,7 +309,6 @@ function humanizeAIError(raw: string): string {
 function AIPanel({
   expanded,
   onToggle,
-  interpretation,
   available,
   loading,
   error,
@@ -311,7 +320,6 @@ function AIPanel({
 }: {
   expanded: boolean;
   onToggle: () => void;
-  interpretation: InterpretResponse | null;
   available?: boolean;
   loading?: boolean;
   error?: string | null;
@@ -323,8 +331,7 @@ function AIPanel({
 }) {
   const errorDisplay = error ? humanizeAIError(error) : null;
   const activeModel = modelOptions.find((option) => option.id === selectedModel) ?? modelOptions[0];
-  const activeContract = interpretation?.contract;
-  const cautionTone = activeContract?.caution_level === "high" ? "Hög försiktighet" : preview.cautionLabel;
+  const cautionTone = preview.cautionLabel;
 
   return (
     <div className="bg-surface/75 rounded-2xl border border-border/70 overflow-hidden">
@@ -344,14 +351,14 @@ function AIPanel({
             <div className="rounded-xl border border-border/70 bg-background/70 p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] text-accent-foreground font-body">
-                  {activeContract?.label ?? preview.label}
+                  {preview.label}
                 </span>
                 <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
                   {cautionTone}
                 </span>
               </div>
               <p className="mt-2 text-xs text-muted-foreground font-body leading-relaxed">
-                {activeContract?.tone ?? preview.summary}
+                {preview.summary}
               </p>
             </div>
 
@@ -377,13 +384,17 @@ function AIPanel({
             </div>
 
             <p className="text-xs text-muted-foreground font-body leading-relaxed">
-              Här används postens text, de begrepp som hittats i texten och sådant du själv har kopplat. Resultatet är ett underlag för vidare reflektion, inte ett facit.
+              Här används postens text, de begrepp som hittats i texten och sådant du själv har kopplat. När du genererar öppnas en egen lugn lässida med tolkningen — inget rått API-dump i samma panel.
             </p>
 
             {!available && (
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                AI-tolkning är inte aktiverad i backend just nu.
-              </p>
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-950 dark:text-amber-100 leading-relaxed">
+                <p className="font-medium">AI-tolkning är avstängd</p>
+                <p className="mt-1 opacity-90">
+                  Backend saknar <span className="font-mono">OPENAI_API_KEY</span> i <span className="font-mono">backend/.env</span>.
+                  Lägg till nyckeln och starta om uvicorn för att aktivera tolkning.
+                </p>
+              </div>
             )}
           </div>
           {!loading && (
@@ -393,41 +404,14 @@ function AIPanel({
               disabled={!selectedModel || !available}
               className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-body font-medium hover:bg-primary/90 disabled:opacity-60"
             >
-              {interpretation ? "Generera igen" : "Generera tolkning"}
+              Generera tolkning
             </button>
           )}
-          {loading && <p className="text-sm text-muted-foreground">Arbetar med tolkningen...</p>}
+          {loading && <p className="text-sm text-muted-foreground">Arbetar med tolkningen… du skickas till lässidan när den är klar.</p>}
           {errorDisplay && (
             <div className="mb-2">
               <p className="text-sm text-destructive">{errorDisplay}</p>
             </div>
-          )}
-          {interpretation && (
-            <>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
-                  Modell: {interpretation.model_used}
-                </span>
-                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground font-body">
-                  Kontrakt: {interpretation.contract.label}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {interpretation.sections.map((section) => (
-                  <div key={section.id} className="rounded-xl border border-border/70 bg-background/70 p-3">
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-body">
-                      {section.title}
-                    </p>
-                    <p className="mt-2 whitespace-pre-line text-sm text-surface-foreground font-body leading-relaxed">
-                      {section.content}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground font-body italic">
-                {interpretation.disclaimer}
-              </p>
-            </>
           )}
         </div>
       )}

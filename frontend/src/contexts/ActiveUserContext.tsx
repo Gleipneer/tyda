@@ -1,38 +1,28 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import type { User } from "@/services/users";
-
-const STORAGE_KEY = "tyda.activeUser";
+import type { SessionUser } from "@/services/authStorage";
+import { clearSessionStorage, loadSession, saveSession } from "@/services/authStorage";
 
 interface ActiveUserContextValue {
-  activeUser: User | null;
-  setActiveUser: (user: User) => void;
+  activeUser: SessionUser | null;
+  setActiveUser: (user: SessionUser) => void;
   clearActiveUser: () => void;
 }
 
 const ActiveUserContext = createContext<ActiveUserContextValue | undefined>(undefined);
 
 export function ActiveUserProvider({ children }: { children: React.ReactNode }) {
-  const [activeUser, setActiveUserState] = useState<User | null>(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as User;
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-  });
+  const [activeUser, setActiveUserState] = useState<SessionUser | null>(() => loadSession());
 
   const value = useMemo<ActiveUserContextValue>(
     () => ({
       activeUser,
       setActiveUser: (user) => {
         setActiveUserState(user);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        saveSession(user);
       },
       clearActiveUser: () => {
         setActiveUserState(null);
-        localStorage.removeItem(STORAGE_KEY);
+        clearSessionStorage();
       },
     }),
     [activeUser]

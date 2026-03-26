@@ -10,7 +10,7 @@
 **Orsak:** Backend körde med gammal konfiguration (innan `DB_PASSWORD` lades till i `.env`). Databasanslutningen misslyckades, alla DB-endpoints returnerade 500. Vite-proxyn vidarebefordrade till backend som returnerade fel – vilket i vissa fall visades som "Bad Gateway" i frontend.
 
 **Åtgärd:**
-1. Backend startades om från `backend/` med korrekt `.env` (DB_PASSWORD=15Femton)
+1. Backend startades om från `backend/` med korrekt `.env` (lösenord i `.env` — aldrig i versionskontrollerad dokumentation)
 2. Proxy-target i `vite.config.ts` ändrad till `http://127.0.0.1:8000` (tydligare IPv4)
 3. Frontend startades om för att ladda ny proxy-konfiguration
 

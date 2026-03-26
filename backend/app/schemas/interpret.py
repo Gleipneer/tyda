@@ -1,7 +1,7 @@
 """Pydantic-scheman för AI-tolkning."""
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 InterpretKind = Literal["dream", "poem", "reflection"]
@@ -42,6 +42,8 @@ class InterpretResponse(BaseModel):
     disclaimer: str
     contract: InterpretationContract
     sections: list[InterpretationSection]
+    # Ord som automatchats i texten (ingen DB-persistens; endast visning)
+    matched_highlight: list[str] = Field(default_factory=list)
 
 
 class InterpretStatus(BaseModel):

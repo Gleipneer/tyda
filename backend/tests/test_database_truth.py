@@ -21,7 +21,8 @@ def test_core_tables_exist():
         ORDER BY TABLE_NAME
         """
     )
-    assert [row["TABLE_NAME"] for row in rows] == [
+    got = sorted(row["TABLE_NAME"].lower() for row in rows)
+    assert got == [
         "aktivitetlogg",
         "anvandare",
         "begrepp",
@@ -50,7 +51,7 @@ def test_activity_indexes_exist_for_runtime_queries():
         SELECT INDEX_NAME
         FROM information_schema.STATISTICS
         WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'aktivitetlogg'
+          AND LOWER(TABLE_NAME) = 'aktivitetlogg'
           AND INDEX_NAME IN ('idx_aktivitetlogg_post_tidpunkt')
         GROUP BY INDEX_NAME
         ORDER BY INDEX_NAME
@@ -65,14 +66,17 @@ def test_delete_rules_are_explicit_for_post_children():
         SELECT CONSTRAINT_NAME, DELETE_RULE
         FROM information_schema.REFERENTIAL_CONSTRAINTS
         WHERE CONSTRAINT_SCHEMA = DATABASE()
-          AND CONSTRAINT_NAME IN ('postbegrepp_ibfk_1', 'postbegrepp_ibfk_2', 'aktivitetlogg_ibfk_1')
+          AND LOWER(CONSTRAINT_NAME) IN ('postbegrepp_ibfk_1', 'postbegrepp_ibfk_2', 'aktivitetlogg_ibfk_1')
         ORDER BY CONSTRAINT_NAME
-        """
+    """
     )
-    assert rows == [
-        {"CONSTRAINT_NAME": "aktivitetlogg_ibfk_1", "DELETE_RULE": "CASCADE"},
-        {"CONSTRAINT_NAME": "postbegrepp_ibfk_1", "DELETE_RULE": "CASCADE"},
-        {"CONSTRAINT_NAME": "postbegrepp_ibfk_2", "DELETE_RULE": "CASCADE"},
+    normalized = sorted(
+        (r["CONSTRAINT_NAME"].lower(), r["DELETE_RULE"]) for r in rows
+    )
+    assert normalized == [
+        ("aktivitetlogg_ibfk_1", "CASCADE"),
+        ("postbegrepp_ibfk_1", "CASCADE"),
+        ("postbegrepp_ibfk_2", "CASCADE"),
     ]
 
 
@@ -83,7 +87,7 @@ def test_postbegrepp_has_no_relationtyp():
         SELECT COLUMN_NAME
         FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'postbegrepp'
+          AND LOWER(TABLE_NAME) = 'postbegrepp'
         ORDER BY ORDINAL_POSITION
         """
     )
@@ -102,7 +106,7 @@ def test_postbegrepp_unique_on_postid_begreppid():
         SELECT INDEX_NAME, COLUMN_NAME
         FROM information_schema.STATISTICS
         WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'postbegrepp'
+          AND LOWER(TABLE_NAME) = 'postbegrepp'
           AND INDEX_NAME = 'postbegrepp_postid_begreppid_unique'
         ORDER BY SEQ_IN_INDEX
         """
@@ -118,7 +122,7 @@ def test_postbegrepp_no_redundant_post_index():
         SELECT INDEX_NAME
         FROM information_schema.STATISTICS
         WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'postbegrepp'
+          AND LOWER(TABLE_NAME) = 'postbegrepp'
         GROUP BY INDEX_NAME
         """
     )
@@ -134,7 +138,7 @@ def test_poster_synlighet_enum_privat_publik():
         SELECT COLUMN_TYPE
         FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'poster'
+          AND LOWER(TABLE_NAME) = 'poster'
           AND COLUMN_NAME = 'Synlighet'
         """
     )
@@ -152,9 +156,9 @@ def test_poster_has_check_titel():
         SELECT CONSTRAINT_NAME
         FROM information_schema.TABLE_CONSTRAINTS
         WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'poster'
+          AND LOWER(TABLE_NAME) = 'poster'
           AND CONSTRAINT_TYPE = 'CHECK'
-          AND CONSTRAINT_NAME = 'chk_poster_titel_nonempty'
+          AND LOWER(CONSTRAINT_NAME) = 'chk_poster_titel_nonempty'
         """
     )
     assert len(rows) >= 1

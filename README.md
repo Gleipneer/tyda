@@ -6,39 +6,55 @@ Webbapplikation ovanpå databasen `reflektionsarkiv`. Användare kan skriva post
 
 ## Stack
 
-- **Backend:** Python 3.12+, FastAPI, MySQL (mysql-connector-python)
-- **Frontend:** React, Vite, TypeScript
+- **Backend:** Python 3.12 (se `.python-version`), FastAPI, MySQL (mysql-connector-python)
+- **Frontend:** React, Vite, TypeScript (pakethantering: **npm**; `package-lock.json` är canonical)
 - **Databas:** MySQL (reflektionsarkiv)
+
+## Dokumentation — var börjar jag?
+
+| Behov | Fil |
+|--------|-----|
+| Aktuell demo-/funktionsstatus | `docs/STATUS.md` |
+| Snabb repoöversikt och Tailscale-tips | `REPO_OVERSIKT.md` |
+| Steg-för-steg ny i projektet | `KOMPANJON.md` |
+| Arkitektur, API-plan, byggordning | `docs/ARCHITECTURE.md`, `docs/API_PLAN.md`, `docs/BUILD_ORDER.md` |
+| VG-kriterier (kurs) | `VG/VG_KRITERIER_STATUS.md` (primär), `VG/VG_ATERSTAENDE.md` (kompletterande) |
+| Cursor-/agentinstruktioner (planering) | `start.md`, `Planering.md` |
 
 ## Starta projektet
 
 **Snabbstart (efter första gångens setup):** Kör från projektroten:
 
+**Windows (PowerShell):**
+
 ```powershell
 .\scripts\start.ps1
 ```
 
-På Mac/Linux: `./scripts/start.sh` (kräver `chmod +x scripts/start.sh` första gången).
+**macOS / Linux:**
 
-Ny i projektet? Las `KOMPANJON.md` i projektroten for en steg-for-steg-guide.
+```bash
+chmod +x scripts/start.sh   # första gången
+./scripts/start.sh
+```
 
-Skriptet frigör port 8000 och 5173 om de är upptagna, startar backend i bakgrunden och frontend i förgrunden. Backend: http://127.0.0.1:8000, Frontend: http://localhost:5173.
+Skriptet frigör port 8000 och 5173 om de är upptagna, startar backend i bakgrunden och frontend i förgrunden. Backend: http://127.0.0.1:8000, Frontend: http://localhost:5173 (Vite lyssnar på alla gränssnitt — se `REPO_OVERSIKT.md` för Tailscale).
 
 ---
 
-**Manuell start (viktig ordning):** Databas → Migrationer → Backend → Frontend.
+**Manuell start (viktig ordning):** Databas → Backend (kör migrationer automatiskt vid uppstart) → Frontend.
 
 ### 1. Databas
 
-Se till att MySQL körs. Skapa databasen:
+Se till att MySQL körs. Skapa databasen (på Ubuntu med `auth_socket` för root: `sudo mysql < reflektionsarkiv.sql`):
 
 ```bash
 mysql -u root -p < reflektionsarkiv.sql
 ```
 
-### 2. Migrationer (utökar begreppsbiblioteket)
+### 2. Migrationer (valfritt manuellt)
 
-Kör från `backend/`-katalogen så att `.env` laddas:
+Vid `uvicorn app.main:app` körs alla `database/migrations/*.sql` i ordning innan API:t tar emot trafik (idempotent). Du kan också köra samma kedja manuellt från `backend/`:
 
 ```bash
 cd backend
@@ -56,10 +72,10 @@ python -m venv venv
 # source venv/bin/activate
 
 pip install -r requirements.txt
-copy .env.example .env
-# Redigera .env: DB_PASSWORD måste anges
+cp .env.example .env
+# Redigera .env: DB_PASSWORD, JWT_SECRET (se .env.example)
 
-uvicorn app.main:app --port 8000
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ### 4. Frontend
@@ -72,6 +88,12 @@ npm run dev
 
 Öppna http://localhost:5173
 
+### Autentisering (JWT)
+
+Efter `POST /api/auth/login` eller `POST /api/users` returneras `access_token` (Bearer JWT). Frontend sparar token i `tyda.session` och skickar `Authorization: Bearer …` på skyddade anrop.
+
+Skrivskyddat API (kräver giltig JWT): skapa/uppdatera/radera poster, koppla/ta bort begrepp på post, AI-tolkning. Postens ägare hämtas från token — inte från klientfält.
+
 ### Valfritt: AI-tolkning
 
 Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på postdetaljsidan. Nyckeln används endast server-side och exponeras aldrig i frontend.
@@ -79,7 +101,7 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 ## Frontend just nu
 
 - Navigationen är mobile-first: toppnavigation på större skärmar och menyknapp på smalare vyer.
-- Aktiv användare väljs på startsidan och kan lämnas via `Byt användare` i headern på desktop eller i menyn på smalare vyer.
+- Inloggning på startsidan ger JWT; session (användare + token) sparas i `localStorage`. Byt användare via `Byt användare` i header eller meny.
 - Skrivflödet ligger i `Ny post`: titel, innehåll, kategori och synlighet. Utkast sparas lokalt per aktiv användare.
 - Kategori väljs vid skapande av posten. UI:t använder `Privat` och `Publik`; i databasen/API:t finns värdena `privat` och `publik`.
 - AI-tolkning körs från postdetaljen och har nu modellval i UI:t. Frontend hämtar tillåtna modeller från backend och skickar vald modell till interpret-endpointen.
@@ -90,13 +112,13 @@ Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på
 
 - `GET /api/health` – backend igång
 - `GET /api/db-health` – databasanslutning
-- `POST /api/auth/login` – inloggning (`identifier` + `password`; se `docs/INLOGGNING_DEMO.md`)
-- `POST /api/users` – skapa konto (`anvandarnamn`, `epost`, `losenord` minst 8 tecken)
+- `POST /api/auth/login` – inloggning; svar: `access_token`, `user` (se `docs/INLOGGNING_DEMO.md`)
+- `POST /api/users` – skapa konto; svar: `access_token`, `user`
 - `GET /api/users/{id}` – en användare
 - `GET /api/categories` – kategorier
-- `GET /api/posts` – poster
-- `POST /api/posts` – skapa post
-- `POST /api/posts/{id}/interpret` – AI-tolkning (kräver OPENAI_API_KEY)
+- `GET /api/posts` – poster (filtrering `?anvandar_id=` kräver Bearer som samma användare)
+- `POST /api/posts` – skapa post (Bearer; ägare = inloggad användare)
+- `POST /api/posts/{id}/interpret` – AI-tolkning (Bearer + OPENAI_API_KEY)
 - m.fl. (se docs/API_PLAN.md)
 
 ## Säkerhetsstrategi
@@ -153,7 +175,7 @@ Index finns där appen filtrerar och joinar: Poster (AnvandarID, KategoriID, Ska
 - Inloggning: `POST /api/auth/login` jämför lösenord mot **bcrypt-hash** i `Anvandare.LosenordHash`. Demo-konton: `docs/INLOGGNING_DEMO.md`.
 - Begränsat databaskonto via `grants.sql`.
 - Constraints: NOT NULL, ENUM, UNIQUE, FOREIGN KEY, CHECK (titel får inte vara tom).
-- **Känd begränsning:** skriv-API (t.ex. skapa post) litar fortfarande på `anvandar_id` från klienten; riktig produktion kräver session/JWT kopplad till inloggning.
+- **JWT:** Skrivoperationer på poster och post–begrepp kräver Bearer-token från inloggning. För produktion: stark `JWT_SECRET`, kortare livslängd och helst httpOnly-cookies istället för `localStorage`.
 
 ## Dokumentation
 

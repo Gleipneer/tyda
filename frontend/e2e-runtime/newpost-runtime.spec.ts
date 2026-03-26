@@ -123,9 +123,10 @@ test.describe("NewPostPage runtime verification", () => {
     const modelOptions = await modelSelect.locator("option").allTextContents();
     expect(modelOptions.length).toBeGreaterThanOrEqual(4);
 
-    await page.getByRole("button", { name: /generera tolkning|generera igen/i }).click();
-    await expect(page.getByText(/modell:/i).last()).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText(/kontrakt:/i).last()).toBeVisible({ timeout: 20000 });
+    await page.getByRole("button", { name: /generera tolkning/i }).click();
+    await expect(page).toHaveURL(/\/posts\/\d+\/tolkning/, { timeout: 25000 });
+    await expect(page.getByRole("heading", { name: /möjlig läsning/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/försiktighet/i).first()).toBeVisible();
   });
 
   test("12: Desktop nav and runbook link are visible", async ({ page }) => {

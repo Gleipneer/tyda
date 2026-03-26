@@ -18,9 +18,8 @@ export function fetchPublicPosts(): Promise<Post[]> {
   return get<Post[]>("/posts/public");
 }
 
-export function fetchPost(id: number, viewerUserId?: number): Promise<Post> {
-  const qs = viewerUserId ? `?viewer_user_id=${viewerUserId}` : "";
-  return get<Post>(`/posts/${id}${qs}`);
+export function fetchPost(id: number): Promise<Post> {
+  return get<Post>(`/posts/${id}`);
 }
 
 export function fetchPublicPost(id: number): Promise<Post> {

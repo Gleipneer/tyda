@@ -12,6 +12,7 @@ import type { MatchedConcept } from "@/services/analyze";
 import { matchTypeLabel } from "@/lib/matchTypeLabels";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import VisibilityBadge from "@/components/VisibilityBadge";
+import { categoryOptionLabel, pickDreamCategoryId } from "@/lib/categoryLabels";
 
 /** Samma som Poster.Titel VARCHAR(150) i databasen. */
 const POST_TITLE_MAX_CHARS = 150;
@@ -164,7 +165,7 @@ export default function NewPostPage() {
       if (current !== null && categories.some((category) => category.kategori_id === current)) {
         return current;
       }
-      return categories[0].kategori_id;
+      return pickDreamCategoryId(categories);
     });
   }, [categories]);
 
@@ -187,7 +188,6 @@ export default function NewPostPage() {
     if (!activeUser || !title.trim() || !content.trim() || categoryId === null) return;
 
     createMutation.mutate({
-      anvandar_id: activeUser.anvandar_id,
       kategori_id: categoryId,
       titel: title.trim(),
       innehall: content.trim(),
@@ -206,7 +206,7 @@ export default function NewPostPage() {
     localStorage.removeItem(draftKey);
     setTitle("");
     setContent("");
-    setCategoryId(categories[0]?.kategori_id ?? null);
+    setCategoryId(pickDreamCategoryId(categories));
     setVisibility("privat");
     setMatchedConcepts([]);
     setDraftSavedAt(null);
@@ -406,7 +406,7 @@ export default function NewPostPage() {
                     {categoryId === null && <option value="">Välj kategori</option>}
                     {categories.map((c) => (
                       <option key={c.kategori_id} value={c.kategori_id}>
-                        {c.namn}
+                        {categoryOptionLabel(c.namn)}
                       </option>
                     ))}
                   </select>

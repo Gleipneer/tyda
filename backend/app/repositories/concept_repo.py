@@ -83,3 +83,19 @@ def delete_post_concept(post_begrepp_id: int) -> int:
     with get_cursor() as cursor:
         cursor.execute("DELETE FROM PostBegrepp WHERE PostBegreppID = %s", (post_begrepp_id,))
         return cursor.rowcount
+
+
+def get_post_owner_for_post_begrepp(post_begrepp_id: int) -> int | None:
+    """Returnerar Poster.AnvandarID för en PostBegrepp-rad, eller None."""
+    with get_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT p.AnvandarID
+            FROM PostBegrepp pb
+            INNER JOIN Poster p ON p.PostID = pb.PostID
+            WHERE pb.PostBegreppID = %s
+            """,
+            (post_begrepp_id,),
+        )
+        row = cursor.fetchone()
+        return int(row["AnvandarID"]) if row else None

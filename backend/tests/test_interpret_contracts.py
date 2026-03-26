@@ -1,12 +1,13 @@
 import json
 
+import pytest
+
 from app.routers.interpret import (
-    _normalize_model,
     _render_interpretation_text,
     _resolve_interpret_contract,
     _structure_ai_response,
-    SUPPORTED_MODELS,
 )
+from app.services.interpret_models import SUPPORTED_MODELS, resolve_requested_model_id
 
 
 def test_resolve_dream_contract():
@@ -14,6 +15,17 @@ def test_resolve_dream_contract():
     assert contract.kind == "dream"
     assert contract.label == "Drömläsning"
     assert contract.caution_level == "high"
+    ids = [s.id for s in contract.sections]
+    assert ids == [
+        "summary",
+        "dream_movement",
+        "unconscious_message",
+        "symbolic_lenses",
+        "life_readings",
+        "gentle_guidance",
+        "reflection_prompt",
+        "caution",
+    ]
 
 
 def test_resolve_poem_contract():
@@ -33,12 +45,15 @@ def test_supported_models_offer_modern_choices():
     assert model_ids == ["gpt-4.1-mini", "gpt-4.1", "gpt-4o", "gpt-5-mini", "gpt-5"]
 
 
-def test_normalize_model_accepts_supported_choice():
-    assert _normalize_model("gpt-5-mini") == "gpt-5-mini"
+def test_resolve_explicit_model_accepts_supported_choice():
+    mid, explicit = resolve_requested_model_id("gpt-5-mini")
+    assert mid == "gpt-5-mini"
+    assert explicit is True
 
 
-def test_normalize_model_falls_back_to_supported_default():
-    assert _normalize_model("gpt-3.5-turbo") == "gpt-4.1-mini"
+def test_resolve_explicit_unknown_model_raises():
+    with pytest.raises(ValueError, match="stöds inte"):
+        resolve_requested_model_id("gpt-3.5-turbo")
 
 
 def test_structure_ai_response_uses_contract_sections():

@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   PlusCircle,
+  Shield,
   User,
   X,
 } from "lucide-react";
@@ -44,6 +45,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       ? [
           { to: "/activity", label: "Aktivitet", icon: Activity },
           { to: "/analytics", label: "Analys", icon: BarChart3 },
+          ...(activeUser.ar_admin ? [{ to: "/admin", label: "Admin", icon: Shield }] : []),
         ]
       : []),
     { to: "/about", label: "Om Tyda", icon: HelpCircle },

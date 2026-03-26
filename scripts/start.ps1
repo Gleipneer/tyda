@@ -246,7 +246,8 @@ function Initialize-DatabaseReady() {
 
         $dbExists = & $mysql @queryArgs 2>$null
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "[Databas] Kunde inte verifiera databasen via mysql-klienten. Fortsatter och later backend ge tydligt fel om DB saknas." -ForegroundColor Yellow
+            Write-Host "[Databas] Kunde inte ansluta med mysql-klienten (fel DB_USER/DB_PASSWORD eller ingen TCP-access)." -ForegroundColor Yellow
+            Write-Host "         Importera reflektionsarkiv.sql manuellt och satt ratt backend\.env. Fortsatter; backend ger fel om DB saknas." -ForegroundColor Yellow
             return
         }
 
@@ -257,9 +258,6 @@ function Initialize-DatabaseReady() {
                 Stop-WithMessage "Automatisk import av reflektionsarkiv.sql misslyckades. Kontrollera DB_HOST, DB_USER och DB_PASSWORD i backend\.env."
             }
         }
-
-        Write-Host "[Databas] Kor migrationer..." -ForegroundColor Yellow
-        Invoke-Checked $VenvPython @("scripts/run_migration_utf8.py") $BackendDir "Migrering av databasen"
     } finally {
         if ($null -ne $previousPwd) {
             $env:MYSQL_PWD = $previousPwd
@@ -279,7 +277,8 @@ Stop-FrontendProcesses $FrontendPort $FrontendDir
 
 Write-Host ""
 Write-Host ("[Backend] Startar uvicorn pa port {0}..." -f $BackendPort) -ForegroundColor Cyan
-$backendProc = Start-Process -FilePath $VenvPython -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", $BackendPort -WorkingDirectory $BackendDir -WindowStyle Hidden -PassThru
+# 0.0.0.0: same as start.sh — reachable from Tailscale/LAN, not only localhost
+$backendProc = Start-Process -FilePath $VenvPython -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", $BackendPort -WorkingDirectory $BackendDir -WindowStyle Hidden -PassThru
 Write-Host ('[Backend] PID ' + $backendProc.Id) -ForegroundColor Green
 
 if (-not (Wait-ForHttpJson "http://127.0.0.1:$BackendPort/api/health" "status" "ok")) {
@@ -297,6 +296,18 @@ Write-Host ("[Frontend] Startar Vite pa port {0}..." -f $FrontendPort) -Foregrou
 Write-Host ""
 Write-Host "  Backend:  http://127.0.0.1:$BackendPort" -ForegroundColor White
 Write-Host "  Frontend: http://localhost:$FrontendPort" -ForegroundColor White
+$tsIp = $null
+try {
+    $tsCmd = Get-Command tailscale -ErrorAction SilentlyContinue
+    if ($tsCmd) {
+        $tsIp = (& tailscale ip -4 2>$null | Select-Object -First 1)
+        if ($tsIp) { $tsIp = $tsIp.Trim() }
+    }
+} catch {}
+if ($tsIp) {
+    Write-Host "  (Tailscale IPv4) Backend:  http://${tsIp}:$BackendPort" -ForegroundColor Cyan
+    Write-Host "  (Tailscale IPv4) Frontend: http://${tsIp}:$FrontendPort" -ForegroundColor Cyan
+}
 Write-Host ""
 Write-Host "  Tryck Ctrl+C for att stoppa frontend. Backend fortsatter kora." -ForegroundColor Gray
 Write-Host ""

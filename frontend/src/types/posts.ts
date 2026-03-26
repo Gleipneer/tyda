@@ -21,7 +21,6 @@ export interface Post {
 }
 
 export interface PostCreate {
-  anvandar_id: number;
   kategori_id: number;
   titel: string;
   innehall: string;

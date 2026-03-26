@@ -2,15 +2,27 @@
 Reflektionsarkiv – FastAPI backend.
 Primär ingångspunkt för API:t.
 """
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.migrations_runner import run_all_migrations
 from app.routers import health, users, auth, categories, posts, concepts, activity, analytics, analyze, interpret
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Kör migrationskedjan innan API:t tar emot trafik (idempotent; samma ordning som database/migrations/*.sql)."""
+    run_all_migrations(emit=True)
+    yield
+
 
 app = FastAPI(
     title="Reflektionsarkiv API",
     description="API ovanpå databasen reflektionsarkiv",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # CORS så att frontend kan anropa backend under utveckling

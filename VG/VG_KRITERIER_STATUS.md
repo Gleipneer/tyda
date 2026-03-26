@@ -1,7 +1,9 @@
 # VG-kriterier – Status och validering
 
 **Källa:** VG/YH_26_planering_databaser (1).pdf  
-**Senast uppdaterad:** Efter genomförd ändringsplan
+**Senast uppdaterad:** 2026-03-25
+
+**Canonical tillsammans med:** `VG/VG_ATERSTAENDE.md` (punktlistor om återstående/delvis krav ska stämma överens med denna tabell).
 
 ---
 
@@ -15,7 +17,7 @@
 | Dataintegritet (NOT NULL, CHECK, DEFAULT, FK) | ✅ UPPFYLLT | NOT NULL, DEFAULT, FK, ENUM, UNIQUE, CHECK (titel) |
 | Minst en trigger | ✅ UPPFYLLT | `trigga_ny_post_logg`, `trigga_post_uppdaterad_logg` (två triggers) |
 | JOIN och GROUP BY i minst 2 frågor | ✅ UPPFYLLT | reflektionsarkiv.sql + backend repositories |
-| Motivera i README | ⚠️ DELVIS | README har översikt, saknar stark reflektion om designval |
+| Motivera i README | ✅ UPPFYLLT | README har sektionen "Reflektion – databasval och design" med motiveringar |
 
 ---
 

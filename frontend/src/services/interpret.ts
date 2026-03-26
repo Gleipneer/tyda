@@ -28,6 +28,7 @@ export interface InterpretResponse {
   disclaimer: string;
   contract: InterpretationContract;
   sections: InterpretationSection[];
+  matched_highlight?: string[];
 }
 
 export interface InterpretStatus {

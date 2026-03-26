@@ -144,14 +144,16 @@ ensure_database_ready() {
 
     local db_exists
     if ! db_exists="$(mysql "${mysql_args[@]}" --batch --skip-column-names -e "SHOW DATABASES LIKE '$db_name';" 2>/dev/null)"; then
-        echo "[Databas] Kunde inte verifiera databasen via mysql-klienten. Fortsatter och later backend ge tydligt fel om DB saknas."
+        echo "[Databas] Kunde inte ansluta med mysql-klienten (vanligt pa Linux om root anvander auth_socket)."
+        echo "         Atgard: importera manuellt med privilegierad anvandare, t.ex.:"
+        echo "           sudo mysql < $REFLEKTIONSARKIV_SQL"
+        echo "         Skapa sedan en anvandare med losenord for Tyda (se database/scripts/grants.sql och docs/DATABASE_SAKERHET.md)"
+        echo "         och satt DB_USER/DB_PASSWORD i backend/.env. Fortsatter; backend ger fel om DB saknas."
     else
         if [ "$(printf "%s" "$db_exists" | tr -d '\r\n')" != "$db_name" ]; then
             echo "[Databas] Skapar databasen fran reflektionsarkiv.sql..."
             mysql "${mysql_args[@]}" < "$REFLEKTIONSARKIV_SQL" || fail "Automatisk import av reflektionsarkiv.sql misslyckades."
         fi
-        echo "[Databas] Kor migrationer..."
-        (cd "$BACKEND_DIR" && "$VENV_PYTHON" scripts/run_migration_utf8.py) || fail "Migrering av databasen misslyckades."
     fi
 
     if [ -n "$old_mysql_pwd" ]; then
@@ -198,7 +200,8 @@ echo ""
 
 echo "[Backend] Startar uvicorn pa port $BACKEND_PORT..."
 cd "$BACKEND_DIR"
-"$VENV_PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" &
+# 0.0.0.0: nåbar via Tailscale/LAN (inte bara localhost)
+"$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" &
 BACKEND_PID=$!
 echo "[Backend] PID $BACKEND_PID"
 
@@ -217,6 +220,14 @@ echo "[Frontend] Startar Vite pa port $FRONTEND_PORT..."
 echo ""
 echo "  Backend:  http://127.0.0.1:$BACKEND_PORT"
 echo "  Frontend: http://localhost:$FRONTEND_PORT"
+ts_ip=""
+if command -v tailscale >/dev/null 2>&1; then
+    ts_ip="$(tailscale ip -4 2>/dev/null | head -n 1 | tr -d '\r\n' || true)"
+fi
+if [ -n "$ts_ip" ]; then
+    echo "  (Tailscale IPv4) Backend:  http://${ts_ip}:$BACKEND_PORT"
+    echo "  (Tailscale IPv4) Frontend: http://${ts_ip}:$FRONTEND_PORT"
+fi
 echo ""
 echo "  Tryck Ctrl+C for att stoppa frontend. Backend (PID $BACKEND_PID) fortsatter kora."
 echo ""

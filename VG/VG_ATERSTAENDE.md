@@ -4,19 +4,15 @@
 
 ---
 
-## 1. Säkerhetsstrategi (GRANT/REVOKE)
+## 1. Säkerhetsstrategi (GRANT/REVOKE) ✅ KLAR
 
 **Krav:** "Implementera en säkerhetsstrategi (t.ex. begränsa användarbehörigheter med GRANT och REVOKE om det finns användare)."
 
-**Åtgärd:**
-- Skapa `database/scripts/grants.sql` med:
-  - `CREATE USER 'reflektionsarkiv_app'@'localhost' IDENTIFIED BY '...'`
-  - `GRANT SELECT, INSERT, UPDATE, DELETE ON reflektionsarkiv.* TO 'reflektionsarkiv_app'`
-  - `REVOKE` på DROP, CREATE, ALTER
-- Dokumentera i README
-- Uppdatera `.env.example` med app-användare
+**Genomfört:**
+- `database/scripts/grants.sql` med `reflektionsarkiv_app` / `reflektionsarkiv_admin`, `REVOKE ALL` följt av begränsade `GRANT` (DML + `EXECUTE` för procedur), ingen DDL för appkontot.
+- Dokumentation: README (Säkerhetsstrategi), `docs/DATABASE_SAKERHET.md`, `backend/.env.example` beskriver app-användare.
 
-**Motivering om det INTE görs:** Projektet använder ett enda databaskonto. För kursnivå kan detta motiveras med att det är en lokal utvecklingsmiljö; för produktion krävs least-privilege.
+**Drift:** Sätt starka lösenord i skriptet innan körning i delad miljö; peka `DB_USER` mot `reflektionsarkiv_app` i produktion.
 
 ---
 

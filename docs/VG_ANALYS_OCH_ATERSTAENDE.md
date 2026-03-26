@@ -75,7 +75,7 @@ Vad är de största luckorna?
 - Prestandadelen är tekniskt påbörjad genom index och indexstädning, men saknar en tydlig, reproducerbar analys som är lätt att försvara muntligt.
 - README uppfyller inte starkt nog PDF-kravet om att motivera databasstruktur och säkerhetsåtgärder. Den innehåller projektöversikt men inte en tydlig reflektion på den nivån.
 - Integritetsdelen är i praktiken god, men explicit `CHECK` saknas i nuvarande schema. Det gör G/VG-försvaret lite svagare än det behöver vara.
-- Repot innehåller ett konkret säkerhetsproblem: `docs/VERIFICATION_REPORT.md` visar ett faktiskt databaslösenord i klartext.
+- ~~Repot innehöll ett konkret säkerhetsproblem: klartextlösenord i `docs/VERIFICATION_REPORT.md`.~~ **Åtgärdat (2026-03):** lösenordet är borttaget; rotera ändå DB-lösen om filen någonsin versionshanterats publikt.
 
 Är databasen överbyggd, underbyggd eller i sweet spot?
 
@@ -88,7 +88,7 @@ Vilka 3–5 saker ger högst VG-effekt per insats?
 1. Inför en minimal databassäkerhetsstrategi med en begränsad databasanvändare och dokumenterade `GRANT`/`REVOKE`.
 2. Lägg till en kort, reproducerbar prestandadel med 2–3 `EXPLAIN`-kontroller och motivering av nuvarande index.
 3. Stärk README med en kort reflektion om databasval, struktur och säkerhetsåtgärder, och länka till denna analysfil.
-4. Ta bort klartextlösenordet ur `docs/VERIFICATION_REPORT.md`.
+4. ~~Ta bort klartextlösenordet ur `docs/VERIFICATION_REPORT.md`.~~ **Klart.**
 5. Lägg till minst en enkel `CHECK`-constraint för att minska tolkningsrisken kring integritetskravet.
 
 ## 4. VG-kriterier punkt för punkt
@@ -327,7 +327,7 @@ Bevis:
 - `backend/app/db.py` använder ett enda databaskonto från miljövariabler, standardmässigt `DB_USER=root`.
 - Ingen `GRANT` eller `REVOKE` hittades i repot.
 - Ingen verifierbar least-privilege-modell hittades för databasanvändaren.
-- `docs/VERIFICATION_REPORT.md` innehåller ett verkligt databasenlösenord i klartext, vilket direkt försvagar säkerhetsbilden.
+- ~~`docs/VERIFICATION_REPORT.md` innehöll databaslösenord i klartext.~~ Rensat; se aktuell fil.
 
 Bedömning:
 
@@ -506,7 +506,7 @@ Det som är svagt eller saknas:
 - app-användare och databasanvändare blandas lätt ihop om man inte förklarar skillnaden
 - appens "inloggning" är inte verklig autentisering, utan ett lokalt valt användarobjekt i `localStorage`
 - åtkomstkontroll i backend är svag, eftersom vissa API-anrop litar på klientens `anvandar_id` eller `viewer_user_id`
-- `docs/VERIFICATION_REPORT.md` exponerar ett verkligt databasenlösenord i klartext
+- ~~`docs/VERIFICATION_REPORT.md` exponerade databaslösenord i klartext~~ (åtgärdat)
 - appanvändare har ingen lösenordshantering alls, alltså varken hashning eller riktig verifiering
 
 Viktig förklaring: app-användare och databasanvändare är inte samma sak
@@ -611,7 +611,7 @@ Risk om vi hoppar över det:
 #### C. Sanera hemligheter i dokumentation
 Kvar att göra:
 
-- ta bort verkligt databasenlösenord ur `docs/VERIFICATION_REPORT.md`
+- ~~ta bort verkligt databasenlösenord ur `docs/VERIFICATION_REPORT.md`~~ (gjort)
 
 Varför det behövs:
 
