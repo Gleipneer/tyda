@@ -1,188 +1,286 @@
-# Reflektionsarkiv
+# Reflektionsarkiv  
+Joakim Emilsson – YH25  
+Martin Fält – YH25  
 
-Webbapplikation ovanpå databasen `reflektionsarkiv`. Användare kan skriva poster, koppla begrepp, se automatchade symboler och (valfritt) få AI-tolkning av drömmar.
+Syftet med systemet är att lagra och organisera personliga texter i ett reflektionsarkiv.  
+Användaren kan skapa poster, välja kategori, koppla begrepp och se vilka symboler eller ord som automatiskt hittas i texten.  
+Systemet innehåller också en valfri AI-funktion som kan ge en möjlig tolkning av en drömtext.
 
-**Joakim Emilsson – YH24**
+Vi har byggt systemet ovanpå databasen `reflektionsarkiv` och valt att dela upp datan i flera tabeller för att undvika dubbel lagring och få tydliga relationer mellan användare, poster, kategorier, begrepp och loggar.
 
-## Stack
+Projektet består alltså av två delar:
 
-- **Backend:** Python 3.12 (se `.python-version`), FastAPI, MySQL (mysql-connector-python)
-- **Frontend:** React, Vite, TypeScript (pakethantering: **npm**; `package-lock.json` är canonical)
-- **Databas:** MySQL (reflektionsarkiv)
-
-## Dokumentation — var börjar jag?
-
-| Behov | Fil |
-|--------|-----|
-| Aktuell demo-/funktionsstatus | `docs/STATUS.md` |
-| Snabb repoöversikt och Tailscale-tips | `REPO_OVERSIKT.md` |
-| Steg-för-steg ny i projektet | `KOMPANJON.md` |
-| Arkitektur, API-plan, byggordning | `docs/ARCHITECTURE.md`, `docs/API_PLAN.md`, `docs/BUILD_ORDER.md` |
-| VG-kriterier (kurs) | `VG/VG_KRITERIER_STATUS.md` (primär), `VG/VG_ATERSTAENDE.md` (kompletterande) |
-| Cursor-/agentinstruktioner (planering) | `start.md`, `Planering.md` |
-
-## Starta projektet
-
-**Snabbstart (efter första gångens setup):** Kör från projektroten:
-
-**Windows (PowerShell):**
-
-```powershell
-.\scripts\start.ps1
-```
-
-**macOS / Linux:**
-
-```bash
-chmod +x scripts/start.sh   # första gången
-./scripts/start.sh
-```
-
-Skriptet frigör port 8000 och 5173 om de är upptagna, startar backend i bakgrunden och frontend i förgrunden. Backend: http://127.0.0.1:8000, Frontend: http://localhost:5173 (Vite lyssnar på alla gränssnitt — se `REPO_OVERSIKT.md` för Tailscale).
+1. **Databasen**, som är själva grunden i uppgiften  
+2. **Webbsystemet**, som används för att visa hur databasen fungerar i praktiken  
 
 ---
 
-**Manuell start (viktig ordning):** Databas → Backend (kör migrationer automatiskt vid uppstart) → Frontend.
+## Systemets huvudfunktion
 
-### 1. Databas
+Systemet är gjort för att en användare ska kunna:
 
-Se till att MySQL körs. Skapa databasen (på Ubuntu med `auth_socket` för root: `sudo mysql < reflektionsarkiv.sql`):
+- registrera sig och logga in  
+- skapa egna poster  
+- välja kategori på posten, till exempel dröm, tanke eller reflektion  
+- spara posten som privat eller publik  
+- koppla begrepp manuellt till posten  
+- få automatiskt hittade begrepp i texten  
+- se en möjlig AI-tolkning av en drömtext  
 
-```bash
-mysql -u root -p < reflektionsarkiv.sql
-```
+Det betyder att systemet både fungerar som ett arkiv och som en enkel tolkningsmiljö ovanpå databasen.
 
-### 2. Migrationer (valfritt manuellt)
+---
 
-Vid `uvicorn app.main:app` körs alla `database/migrations/*.sql` i ordning innan API:t tar emot trafik (idempotent). Du kan också köra samma kedja manuellt från `backend/`:
+## Databasens tabeller
 
-```bash
-cd backend
-python scripts/run_migration_utf8.py
-```
+### Anvandare
 
-### 3. Backend
+Tabellen lagrar information om användare som kan skapa och läsa sina egna poster.
 
-```bash
-cd backend
-python -m venv venv
-# Windows:
-.\venv\Scripts\Activate.ps1
-# Mac/Linux:
-# source venv/bin/activate
+Exempel på attribut:  
+`AnvandarID`, `Anvandarnamn`, `Epost`, `LosenordHash`, `ArAdmin`, `SkapadDatum`
 
-pip install -r requirements.txt
-cp .env.example .env
-# Redigera .env: DB_PASSWORD, JWT_SECRET (se .env.example)
+---
 
-uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
+### Kategorier
 
-### 4. Frontend
+Här lagras de kategorier som en post kan tillhöra, till exempel dröm, tanke eller reflektion.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Exempel på attribut:  
+`KategoriID`, `Namn`
 
-Öppna http://localhost:5173
+---
 
-### Autentisering (JWT)
+### Poster
 
-Efter `POST /api/auth/login` eller `POST /api/users` returneras `access_token` (Bearer JWT). Frontend sparar token i `tyda.session` och skickar `Authorization: Bearer …` på skyddade anrop.
+Detta är den centrala tabellen i databasen. Här sparas själva innehållet som användaren skriver.
 
-Skrivskyddat API (kräver giltig JWT): skapa/uppdatera/radera poster, koppla/ta bort begrepp på post, AI-tolkning. Postens ägare hämtas från token — inte från klientfält.
+Exempel på attribut:  
+`PostID`, `AnvandarID`, `KategoriID`, `Titel`, `Innehall`, `Synlighet`, `SkapadDatum`
 
-### Valfritt: AI-tolkning
+En post tillhör en användare och en kategori.
 
-Lägg `OPENAI_API_KEY=sk-...` i `backend/.env` för att aktivera AI-tolkning på postdetaljsidan. Nyckeln används endast server-side och exponeras aldrig i frontend.
+---
 
-## Frontend just nu
+### Begrepp
 
-- Navigationen är mobile-first: toppnavigation på större skärmar och menyknapp på smalare vyer.
-- Inloggning på startsidan ger JWT; session (användare + token) sparas i `localStorage`. Byt användare via `Byt användare` i header eller meny.
-- Skrivflödet ligger i `Ny post`: titel, innehåll, kategori och synlighet. Utkast sparas lokalt per aktiv användare.
-- Kategori väljs vid skapande av posten. UI:t använder `Privat` och `Publik`; i databasen/API:t finns värdena `privat` och `publik`.
-- AI-tolkning körs från postdetaljen och har nu modellval i UI:t. Frontend hämtar tillåtna modeller från backend och skickar vald modell till interpret-endpointen.
-- Databasen är fortfarande avsiktligt liten: 6 tabeller, 2 triggers, 1 lagrad procedur. Automatisk matchning och AI-tolkning ligger främst i backend, inte i schemat.
-- Testbarheten bygger just nu främst på stabila routes, roller/labels/placeholders och runtime-testet för ny-post-flödet i `frontend/e2e-runtime/newpost-runtime.spec.ts`.
+Tabellen lagrar ord och symboler som systemet kan använda som begreppsbibliotek.
 
-## API
+Exempel på attribut:  
+`BegreppID`, `Ord`, `Beskrivning`
 
-- `GET /api/health` – backend igång
-- `GET /api/db-health` – databasanslutning
-- `POST /api/auth/login` – inloggning; svar: `access_token`, `user` (se `docs/INLOGGNING_DEMO.md`)
-- `POST /api/users` – skapa konto; svar: `access_token`, `user`
-- `GET /api/users/{id}` – en användare
-- `GET /api/categories` – kategorier
-- `GET /api/posts` – poster (filtrering `?anvandar_id=` kräver Bearer som samma användare)
-- `POST /api/posts` – skapa post (Bearer; ägare = inloggad användare)
-- `POST /api/posts/{id}/interpret` – AI-tolkning (Bearer + OPENAI_API_KEY)
-- m.fl. (se docs/API_PLAN.md)
+Här finns till exempel symboliska ord som kan användas vid matchning mot text.
 
-## Säkerhetsstrategi
+---
 
-Databasen följer **least privilege**: applikationen ska använda `reflektionsarkiv_app` med begränsade rättigheter. Skriptet `database/scripts/grants.sql` gör i korthet:
+### PostBegrepp
 
-1. **`REVOKE ALL PRIVILEGES`** på `reflektionsarkiv.*` för app-användaren (nollställer gamla/överblivna rättigheter).
-2. **`GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE`** – ingen DDL (CREATE/DROP/ALTER-tabeller) för appkontot.
-3. **Valfritt:** `reflektionsarkiv_admin` med `ALL PRIVILEGES` på *endast* databasen `reflektionsarkiv` – för migrationer/schema utan att använda root (om du vill).
+Detta är en kopplingstabell mellan `Poster` och `Begrepp`.
 
-**Körordning:** skapa databas/tabeller först (`reflektionsarkiv.sql` eller `reset_database.py`), *sedan*:
+Den behövs eftersom:
 
-```bash
-mysql -u root -p < database/scripts/grants.sql
-```
+- en post kan ha flera begrepp  
+- ett begrepp kan förekomma i flera poster  
 
-**Fördjupning (GRANT, REVOKE, hur du loggar in som admin, varför det inte finns webb-adminportal i Tyda):** se [`docs/DATABASE_SAKERHET.md`](docs/DATABASE_SAKERHET.md).
+Detta är alltså en **många-till-många-relation**.
 
-## Reflektion – databasval och design
+Exempel på attribut:  
+`PostBegreppID`, `PostID`, `BegreppID`
 
-### Varför MySQL / relationsdatabas
+---
 
-Projektet använder en relationsdatabas (MySQL) eftersom datan är strukturerad: användare, poster, kategorier, begrepp och kopplingar mellan dem. Relationsmodellen med primärnycklar, främmande nycklar och JOIN:s passar väl. NoSQL (t.ex. dokument- eller nyckelvärdesdatabas) hade krävt mer applikationslogik för relationer som redan löses enkelt i SQL.
+### AktivitetLogg
 
-### Varför denna tabellstruktur
+Denna tabell används för att logga vissa händelser i systemet, till exempel när en post skapas eller ändras.
 
-- **Anvandare, Kategorier, Poster, Begrepp** – separata tabeller för återanvändning och normalisering.
-- **PostBegrepp** – kopplingstabell för många-till-många mellan Poster och Begrepp. En post kan ha många begrepp, ett begrepp kan finnas i många poster. UNIQUE(PostID, BegreppID) hindrar dubbletter.
-- **AktivitetLogg** – enkel logg separat från postdatan. Triggarna skriver vid ny post respektive när titel, innehåll, synlighet eller kategori ändras.
+Exempel på attribut:  
+`AktivitetID`, `PostID`, `Handelse`, `Tidpunkt`
 
-### Varför Synlighet bara är privat och publik
+---
 
-Tidigare fanns `delad` som tredje alternativ. Det togs bort för att förenkla: användaren behöver veta om posten är privat (bara i mitt rum) eller publik (synlig i Utforska). Två tydliga lägen räcker för kursnivån.
+## Relationer
 
-### Varför PostBegrepp saknar Kommentar
+Databasen bygger på tydliga relationer mellan tabellerna.
 
-Kolumnen Kommentar togs bort som designval. Ingen UI använde den, och modellen blev enklare. Manuella begreppskopplingar sparas utan kommentar.
+- En användare kan skapa flera poster  
+- En kategori kan användas av flera poster  
+- En post kan kopplas till flera begrepp  
+- Ett begrepp kan förekomma i flera poster  
+- En post kan ha flera logghändelser  
 
-### Varför triggarna och proceduren finns
+För att lösa relationen mellan poster och begrepp används tabellen `PostBegrepp`.
 
-- **Trigger** `trigga_ny_post_logg` – loggning vid ny post.
-- **Trigger** `trigga_post_uppdaterad_logg` – loggning vid uppdatering som ändrar titel, innehåll, synlighet eller kategori.
-- **Procedure** `hamta_poster_per_kategori` – databasnära analys. Visar att logik kan ligga i databasen.
+Detta gör databasen mer normaliserad och tydligare att arbeta med.  
+På så sätt undviks onödig dubbel lagring av data.
 
-**Säkerhetskopia:** se [`docs/BACKUP.md`](docs/BACKUP.md) och `database/scripts/backup.ps1`.
+---
 
-### Index och prestanda
+## Funktioner i systemet
 
-Index finns där appen filtrerar och joinar: Poster (AnvandarID, KategoriID, SkapadDatum), PostBegrepp (UNIQUE + idx på BegreppID), AktivitetLogg (PostID, Tidpunkt). Redundanta index har tagits bort. Se `docs/PRESTANDANALYS.md` för EXPLAIN och motivering.
+Utöver den grundläggande databasstrukturen innehåller projektet flera funktioner.
 
-### Säkerhet och integritet
+### Inloggning och användare
 
-- Parameteriserade frågor (inga SQL-injection via strängkonkatenering).
-- Inloggning: `POST /api/auth/login` jämför lösenord mot **bcrypt-hash** i `Anvandare.LosenordHash`. Demo-konton: `docs/INLOGGNING_DEMO.md`.
-- Begränsat databaskonto via `grants.sql`.
-- Constraints: NOT NULL, ENUM, UNIQUE, FOREIGN KEY, CHECK (titel får inte vara tom).
-- **JWT:** Skrivoperationer på poster och post–begrepp kräver Bearer-token från inloggning. För produktion: stark `JWT_SECRET`, kortare livslängd och helst httpOnly-cookies istället för `localStorage`.
+Systemet använder inloggning så att varje användare bara arbetar med sina egna poster.  
+Detta gör att systemet blir mer realistiskt än en databas där allt är helt öppet.
 
-## Dokumentation
+Lösenord lagras inte i klartext utan som hash.
 
-- `docs/DATABASE_SAKERHET.md` – GRANT/REVOKE, MySQL-admin vs appanvändare, ingen adminportal
-- `docs/DATABASE_HELP.md` – databasen förklarad (pedagogiskt)
-- `docs/PRESTANDANALYS.md` – prestanda och index
-- `docs/API_PLAN.md` – API-endpoints
-- `frontend/public/runbook.md` – praktisk runbook för start, manuell användning och test
-- `docs/STATUS.md` – projektstatus
-- `docs/BEGREPP_LEXIKON.md` – begreppsbibliotek
+---
+
+### Skapa och spara poster
+
+En användare kan skriva en titel, ett innehåll, välja kategori och välja om posten ska vara privat eller publik.
+
+Detta visas i frontend, men datan lagras i databasen.
+
+---
+
+### Begrepp och symbolmatchning
+
+Systemet kan koppla begrepp till en post på två sätt:
+
+1. **manuellt**, när användaren själv väljer begrepp  
+2. **automatiskt**, när systemet känner igen ord i texten  
+
+Detta gör att en post kan få fler lager av information än bara själva texten.
+
+---
+
+### AI-tolkning av drömmar
+
+Om en post är en drömtext kan användaren få en möjlig AI-tolkning.
+
+Denna funktion är inte själva kärnan i databasuppgiften, men visar hur databasen kan användas tillsammans med ett modernt system ovanpå.
+
+AI-delen ska därför ses som ett extra lager, medan databasen fortfarande är den viktigaste delen i projektet.
+
+---
+
+## Triggers och lagrad procedur
+
+För att uppfylla uppgiftens krav innehåller databasen både triggers och lagrad procedur.
+
+### Triggers
+
+Projektet använder triggers för att automatiskt logga händelser i `AktivitetLogg`.
+
+Exempel:
+- när en ny post skapas  
+- när en post uppdateras  
+
+Detta gör att databasen själv kan reagera på förändringar, utan att all logik måste ligga i frontend eller backend.
+
+---
+
+### Lagrad procedur
+
+Projektet innehåller också en lagrad procedur som hämtar poster per kategori inom ett visst datumintervall.
+
+Detta visar att viss analyslogik kan ligga direkt i databasen.
+
+---
+
+## Säkerhet
+
+Vi har försökt hålla säkerheten på en rimlig nivå för ett skolprojekt.
+
+### I databasen
+
+- primärnycklar och främmande nycklar används för att hålla relationerna korrekta  
+- `NOT NULL`, `UNIQUE` och andra constraints används där det behövs  
+- appen ska använda ett begränsat databaskonto i stället för fulla root-rättigheter  
+
+### I systemet
+
+- lösenord lagras som hash  
+- JWT används för autentisering  
+- skrivoperationer kräver inloggning  
+- användaren kan bara arbeta med sina egna poster, medan admin har större rättigheter  
+
+---
+
+## Prestanda och index
+
+För att databasen inte ska bli onödigt långsam har index lagts på kolumner som används ofta vid sökning, filtrering eller relationer.
+
+Exempel på sådana kolumner är:
+
+- användar-id i poster  
+- kategori-id i poster  
+- datumkolumner  
+- begreppskopplingar  
+- loggtidpunkter  
+
+Detta gör systemet mer skalbart om mängden poster växer.
+
+---
+
+## Varför vi valde en relationsdatabas
+
+Vi valde MySQL och relationsmodell eftersom datan är tydligt strukturerad.
+
+Systemet består av:
+
+- användare  
+- poster  
+- kategorier  
+- begrepp  
+- kopplingar mellan poster och begrepp  
+- loggar  
+
+Detta passar mycket bra i en relationsdatabas där man kan använda:
+
+- primärnycklar  
+- främmande nycklar  
+- JOIN  
+- GROUP BY  
+- constraints  
+- triggers  
+- procedurer  
+
+En NoSQL-lösning hade fungerat sämre för just denna uppgift eftersom relationerna mellan datatyperna är viktiga.
+
+---
+
+## Reflektioner
+
+När vi byggde databasen blev det tydligt att det viktigaste inte bara är att få något att fungera, utan att få strukturen att bli tydlig och hållbar.
+
+Det som varit viktigt i detta projekt är bland annat:
+
+- att förstå varför tabellerna måste delas upp  
+- att förstå varför många-till-många-relationen mellan poster och begrepp behöver en egen kopplingstabell  
+- att hålla databasen normaliserad  
+- att tänka på säkerhet och rättigheter  
+- att skilja mellan det som hör hemma i databasen och det som hör hemma i systemet ovanpå  
+
+Vi ser därför databasen som själva kärnan i projektet, medan frontend och AI-funktionerna används för att visa hur databasen kan användas i praktiken.
+
+Slutsats
+
+Reflektionsarkiv är ett databassystem där användare kan lagra och organisera texter i olika kategorier.
+Systemet använder en relationsdatabas för att hålla ordning på användare, poster, begrepp och loggar.
+
+Det viktigaste i projektet är databasdesignen: tabellerna, relationerna, constraints, triggers, proceduren och säkerheten.
+Frontend och AI-tolkning är byggda ovanpå databasen för att göra systemet lättare att visa och förstå i praktiken.
+
+På så sätt blir projektet både ett databassystem och en konkret demonstration av hur databasen fungerar i ett riktigt användarsystem.
+---
+
+## Hur systemet körs
+
+Projektet innehåller:
+
+- **backend** i Python / FastAPI  
+- **frontend** i React / Vite  
+- **databas** i MySQL  
+
+Systemet kan startas med färdiga startskript.
+
+### Windows
+
+```powershell
+.\scripts\start.ps1
+``` Linux
+./scripts/start.sh
